@@ -10,4 +10,6 @@ usefull things to keep in mind:
 - https://github.com/MosheLevy20/VolumeAnnotate?tab=readme-ov-file
 - https://github.com/association-rosia/vesuvius-challenge/blob/main/assets/vesuvius-challenge.png
 - https://gist.github.com/janpaul123/e7e983f6d1a899ff8354392433be59f9
+- https://www.kaggle.com/code/danielhavir/vesuvius-challenge-example-submission/notebook
+
 
