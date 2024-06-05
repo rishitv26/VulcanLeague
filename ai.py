@@ -9,7 +9,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Dict, List, Optional, Tuple
 import warnings
-
 import util
 
 import matplotlib.pyplot as plt
@@ -171,23 +170,20 @@ class SubvolumeDataset(thd.Dataset):
         ax.add_patch(rect)
         plt.show()
 
-def get_training_data():
-    base_path = Path(util.SETTINGS["base_path"])
-    train_path = base_path / "train"
-    all_fragments = sorted([f.name for f in train_path.iterdir()])
-    print("All fragments:", all_fragments)
+base_path = Path(util.SETTINGS["base_path"])
+train_path = base_path / "train"
+all_fragments = sorted([f.name for f in train_path.iterdir()])
+print("All fragments:", all_fragments)
 
-    # load amount of fragments for training:
-    train_fragments = [train_path / fragment_name for fragment_name in ["1"]]
-    return SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
-
-###################################################################### Sanity check
-# index = 6136130
-# train_dset.plot_label(index, figsize=(16, 10))
-### TODO ....
+# load amount of fragments for training:
+train_fragments = [train_path / fragment_name for fragment_name in ["1"]]
+train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
 BATCH_SIZE = 32
 train_loader = thd.DataLoader(train_dset, batch_size=BATCH_SIZE, shuffle=True)
 print("Num batches:", len(train_loader))
+print("Num items (pixels)", len(train_dset))
+
+print("Loaded dataset for training, generating model...")
 
 ######################################################################## Set up model
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -233,11 +229,14 @@ class InkDetector(torch.nn.Module):
         return self.decoder(features)
     
 model = InkDetector().to(DEVICE)
-
-###########################################################Train
+print("Model Generated, training model...")
+########################################################### Train
 TRAINING_STEPS = 60000
 LEARNING_RATE = 1e-3
-TRAIN_RUN = True # To avoid re-running when saving the notebook
+TRAIN_RUN = True
+if util.SETTINGS["trained"] == "true":
+    TRAIN_RUN = False
+
 warnings.simplefilter('ignore', UndefinedMetricWarning)
 if TRAIN_RUN:
     criterion = nn.BCEWithLogitsLoss()
@@ -271,45 +270,50 @@ if TRAIN_RUN:
             running_fbeta = 0.
             denom = 0
 
-    torch.save(model.state_dict(), "/kaggle/working/model.pt")
-
+    torch.save(model.state_dict(), base_path / "model.pt")
+    util.modify_setting("trained", "true")
 else:
-    model_weights = torch.load("/kaggle/working/model.pt")
+    model_weights = torch.load("model.pt")
     model.load_state_dict(model_weights)
-##############################################################################Evaluate
+
+print("Model successfully trained.")
+
+############################################################################## Evaluate
 # Clear memory before loading test fragments
 train_dset.labels = None
 train_dset.image_stacks = []
 del train_loader, train_dset
 gc.collect()
-test_path = base_path / "test"
-test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]
-print("All fragments:", test_fragments)
-pred_images = []
-model.eval()
-for test_fragment in test_fragments:
-    outputs = []
-    eval_dset = SubvolumeDataset(fragments=[test_fragment], voxel_shape=(48, 64, 64), load_inklabels=False)
-    eval_loader = thd.DataLoader(eval_dset, batch_size=BATCH_SIZE, shuffle=False)
-    with torch.no_grad():
-        for i, (subvolumes, _) in enumerate(tqdm(eval_loader)):
-            output = model(subvolumes.to(DEVICE)).view(-1).sigmoid().cpu().numpy()
-            outputs.append(output)
-    # we only load 1 fragment at a time
-    image_shape = eval_dset.image_stacks[0].shape[1:]
-    eval_dset.labels = None
-    eval_dset.image_stacks = None
-    del eval_loader
-    gc.collect()
 
-    pred_image = np.zeros(image_shape, dtype=np.uint8)
-    outputs = np.concatenate(outputs)
-    for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
-        pred_image[y ,x] = prob > 0.4
-    pred_images.append(pred_image)
+## Test:
+# test_path = util.SETTINGS["base_path"] / "test"
+# test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]
+# print("All fragments:", test_fragments)
+# pred_images = []
+# model.eval()
+# for test_fragment in test_fragments:
+#     outputs = []
+#     eval_dset = SubvolumeDataset(fragments=[test_fragment], voxel_shape=(48, 64, 64), load_inklabels=False)
+#     eval_loader = thd.DataLoader(eval_dset, batch_size=BATCH_SIZE, shuffle=False)
+#     with torch.no_grad():
+#         for i, (subvolumes, _) in enumerate(tqdm(eval_loader)):
+#             output = model(subvolumes.to(DEVICE)).view(-1).sigmoid().cpu().numpy()
+#             outputs.append(output)
+#     # we only load 1 fragment at a time
+#     image_shape = eval_dset.image_stacks[0].shape[1:]
+#     eval_dset.labels = None
+#     eval_dset.image_stacks = None
+#     del eval_loader
+#     gc.collect()
+
+#     pred_image = np.zeros(image_shape, dtype=np.uint8)
+#     outputs = np.concatenate(outputs)
+#     for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
+#         pred_image[y ,x] = prob > 0.4
+#     pred_images.append(pred_image)
     
-    eval_dset.pixels = None
-    del eval_dset
-    gc.collect()
-    print("Finished", test_fragment)
-plt.imshow(pred_images[1], cmap='gray')
+#     eval_dset.pixels = None
+#     del eval_dset
+#     gc.collect()
+#     print("Finished this segment->", test_fragment)
+# plt.imshow(pred_images[1], cmap='gray')
