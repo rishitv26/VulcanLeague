@@ -51,6 +51,8 @@ def first_setup():
     load_settings()
     modify_setting("setup", "true")
     modify_setting("base_path", os.getcwd())
+    modify_setting("trained", "false")
+    save_settings()
 
     print("Setup complete!")
     print("Please reopen the application to use AI...")

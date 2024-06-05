@@ -182,8 +182,9 @@ def get_training_data():
     return SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
 
 ###################################################################### Sanity check
-index = 6136130
-train_dset.plot_label(index, figsize=(16, 10))
+# index = 6136130
+# train_dset.plot_label(index, figsize=(16, 10))
+### TODO ....
 BATCH_SIZE = 32
 train_loader = thd.DataLoader(train_dset, batch_size=BATCH_SIZE, shuffle=True)
 print("Num batches:", len(train_loader))
@@ -230,6 +231,7 @@ class InkDetector(torch.nn.Module):
     def forward(self, x):
         features = self.encoder(x)
         return self.decoder(features)
+    
 model = InkDetector().to(DEVICE)
 
 ###########################################################Train
