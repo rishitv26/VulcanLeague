@@ -6,13 +6,14 @@ from util import *
 import commands
 
 def main():
-    print("Welcome to the VLAE (Vulcan League AI Engine)")
+    print("Welcome to the VLAE (Vulcan League AI Engine) 1.0.0")
     print("type 'help' to see the list of commands.")
+    print("type 'manual' for a basic tutorial on what to do.")
 
     commands.main()
 
 def first_setup():
-    print("Welcome to the VLAE (Vulcan League AI Engine)")
+    print("Welcome to the VLAE 1.0.0 (Vulcan League AI Engine)")
     print("Starting initial setup... Press enter to continue.")
     pause()
     clear()
@@ -44,7 +45,7 @@ def first_setup():
         os.system("pip3 install torch torchvision")
 
     print("Installing rest of dependencies...")
-    os.system("pip3 install matplotlib numpy pandas scikit-learn tqdm")
+    os.system("pip3 install matplotlib numpy pandas scikit-learn tqdm opendatasets")
     clear()
     print("Dependency installation complete! initializing settings...")
 
@@ -52,10 +53,23 @@ def first_setup():
     modify_setting("setup", "true")
     modify_setting("base_path", os.getcwd())
     modify_setting("trained", "false")
+    modify_setting("batch_size", "32")
+    modify_setting("training_steps", "60000")
+    modify_setting("learning_rate", "1e-3")
     save_settings()
 
+    print("Settings initialized. Installing training and testing data...")
+    print("Press enter to continue.")
+    pause()
+
+    import opendatasets as od
+    
+    print("Starting Download...")
+    od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
+    print("Download Complete...")
+
     print("Setup complete!")
-    print("Please reopen the application to use AI...")
+    print("Please reopen the application to use AI.")
     pause()
     exit_routine()
 

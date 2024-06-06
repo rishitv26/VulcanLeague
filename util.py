@@ -46,6 +46,9 @@ def load_settings():
 def modify_setting(setting: str, new_data: str):
     SETTINGS[setting] = new_data
 
+def get_setting(setting: str, new_data: str):
+    return SETTINGS[setting]
+
 def save_settings():
     file = open("mem.txt", 'w')
     lines = []
