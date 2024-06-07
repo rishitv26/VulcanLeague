@@ -56,6 +56,7 @@ def first_setup():
     modify_setting("batch_size", "32")
     modify_setting("training_steps", "60000")
     modify_setting("learning_rate", "1e-3")
+    modify_setting("training_data", "1,2,3")
     save_settings()
 
     print("Settings initialized. Installing training and testing data...")

@@ -224,7 +224,7 @@ def load_model():
     print("All fragments:", all_fragments)
 
     # load amount of fragments for training:
-    train_fragments = [train_path / fragment_name for fragment_name in ["1"]]
+    train_fragments = [train_path / fragment_name for fragment_name in util.get_setting("training_data").split(",")]
     train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
     train_loader = thd.DataLoader(train_dset, batch_size=BATCH_SIZE, shuffle=True)
 

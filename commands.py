@@ -3,6 +3,7 @@
 # 
 import util
 import shutil
+import ai
 
 def illegal_argument(x: int):
     print("ERROR: Invalid Argument Call")
@@ -60,9 +61,16 @@ def main():
                 illegal_argument(2)
             else:
                 try:
-                    shutil.rmtree('data/test/' + str(cmd_list[1]))
+                    shutil.rmtree('data/test/' + cmd_list[1])
                 except FileNotFoundError:
                     segment_doesnt_exist()
+        elif cmd == "train":
+            print("Preparing to train this model...\n")
+            print("DO NOT let machine turn off during this process.")
+            print("Close all other programs for best performance.")
+            print("Press enter when you are ready to continue.")
+            util.pause()
+            ai.load_model()
         else:
             print("ERROR: Could not recongnize command: '" + cmd + "'.")
         
