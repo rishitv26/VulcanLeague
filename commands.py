@@ -37,13 +37,29 @@ def main():
 
         if cmd == "help":
             # Give a list of each command and what it does.
-            pass
+            print("clear/cls - clear the console output")
+            print("exit - stop the VLAE routine")
+            print("manual - basic instructions for running VLAE")
+            print("change-setting <setting> <new value> - changes a setting variable manually.")
+            print("get-setting <setting> - gets the value of a given setting.")
+            print("add-segment <dir> - copy a segment into 'test' subfolder to run ink detetction on.")
+            print("rm-segment <name> - delete a segment from 'test' subfolder")
+            print("train - train the model with data configured by training_data setting. Must be a comma seperated list containing only 1, 2, or 3; NO REPEATS.")
+            print("eval - Run the model on data from 'test' subfolder.")
         elif cmd == "clear" or cmd == "cls":
             util.clear()
         elif cmd == "exit":
             util.exit_routine()
         elif cmd == "manual":
-            # Give a list of instructions to do.
+            print("1. Add all segments using add-segment command for ink evaluation.")
+            print("2. Remove any segments if neccessary.")
+            print("3. Choose between training data combinations of the following: 1; 1,2; 1,2,3. DO NOT PUT ANYTHING ELSE")
+            print("4. When chosen, set it as value for training_data setting using change-setting")
+            print("5. train the model by train command")
+            print("6. run the ink evaluation by eval command")
+            print("7. snaphot output and save it useful")
+            print("8. Run it through letter detector. (TODO)")
+            print("9. Profit!")
             pass
         elif cmd == "change-setting":
             if len(cmd_list) != 3:
@@ -80,7 +96,7 @@ def main():
                 if reply:
                     continue
             print("Preparing to train this model...\n")
-            print("DO NOT let machine turn off during this process.")
+            print("DO NOT let machine turn off or sleep during this process.")
             print("Close all other programs for best performance.")
             print("Press enter when you are ready to continue.")
             util.pause()
@@ -88,7 +104,7 @@ def main():
             ai.load_model()
         elif cmd == "eval":
             print("Preparing for ink evaluation...\n")
-            print("DO NOT let machine turn off during this process.")
+            print("DO NOT let machine turn off or sleep during this process.")
             print("Close all other programs for best performance.")
             print("Press enter when you are ready to continue.")
             util.pause()
