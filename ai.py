@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import Dict, List, Optional, Tuple
 import warnings
 import util
+import opendatasets as od
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -279,7 +280,7 @@ def load_model():
 
     print("Model successfully trained.")
 
-    # Clear memory before loading test fragments
+    # Clear memory to free RAM:
     train_dset.labels = None
     train_dset.image_stacks = []
     del train_loader, train_dset
@@ -293,7 +294,7 @@ def eval_model():
     test_path = util.SETTINGS["base_path"] / "test"
     test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]
     print("All fragments to run: ", test_fragments)
-    reply = util.ask("Start Evaluation of the following fragments?> ")
+    reply = util.ask("Start Ink Detection of the following fragments?> ")
     if not reply:
         return None
     pred_images = []
@@ -325,8 +326,14 @@ def eval_model():
         print("Finished this segment->", test_fragment)
     
     util.clear()
-    print("Finished detecting Ink! Showing the detected ink...")
+    print("Finished! Showing the detected ink...")
 
-    plt.imshow(pred_images[1], cmap='gray')
+    for i in pred_images:
+        plt.imshow(i, cmap='gray')
 
     # TODO Save results.
+
+def download_data():
+    print("Starting Download...")
+    od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
+    print("Download Complete...")

@@ -3,6 +3,7 @@
 # 
 import util
 import shutil
+import os
 import ai
 
 def illegal_argument(x: int):
@@ -17,6 +18,15 @@ def segment_doesnt_exist():
 
 def setting_doesnt_exist():
     print("ERROR: This setting has not been defined or doesnt exist.")
+
+def data_not_downloaded():
+    print("ERROR: The data required to train the model is not yet installed.\n")
+    reply = util.ask("Install them now?> ")
+    if reply:
+        ai.download_data()
+        return False
+    else:
+        return True
 
 def main():
     util.load_settings()
@@ -65,12 +75,25 @@ def main():
                 except FileNotFoundError:
                     segment_doesnt_exist()
         elif cmd == "train":
+            if not os.path.isdir("data"):
+                reply = data_not_downloaded()
+                if reply:
+                    continue
             print("Preparing to train this model...\n")
             print("DO NOT let machine turn off during this process.")
             print("Close all other programs for best performance.")
             print("Press enter when you are ready to continue.")
             util.pause()
+            util.clear()
             ai.load_model()
+        elif cmd == "eval":
+            print("Preparing for ink evaluation...\n")
+            print("DO NOT let machine turn off during this process.")
+            print("Close all other programs for best performance.")
+            print("Press enter when you are ready to continue.")
+            util.pause()
+            util.clear()
+            ai.eval_model()
         else:
             print("ERROR: Could not recongnize command: '" + cmd + "'.")
         

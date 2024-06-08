@@ -53,7 +53,7 @@ def save_settings():
     file = open("mem.txt", 'w')
     lines = []
     for key in SETTINGS:
-        lines.append(key + "=" + SETTINGS[key])
+        lines.append(key + "=" + SETTINGS[key] + "\n")
     file.writelines(lines)
     file.close()
 

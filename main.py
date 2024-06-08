@@ -1,16 +1,7 @@
 #
 # Main file that runs tensorflow network. Run this in server.
 #
-
 from util import *
-import commands
-
-def main():
-    print("Welcome to the VLAE (Vulcan League AI Engine) 1.0.0")
-    print("type 'help' to see the list of commands.")
-    print("type 'manual' for a basic tutorial on what to do.")
-
-    commands.main()
 
 def first_setup():
     print("Welcome to the VLAE 1.0.0 (Vulcan League AI Engine)")
@@ -20,8 +11,10 @@ def first_setup():
     ################# import dependencies:
 
     import os
-    os.system("pip3 install --upgrade pip")
-    clear()
+    if not is_windows():
+        os.system("python3 -m pip install --upgrade pip")
+    else:
+        os.system("python -m pip install --upgrade pip")
 
     if not is_mac():
         reply = ask("Do you have an NVIDIA GPU setup on this machine?> ")
@@ -56,23 +49,30 @@ def first_setup():
     modify_setting("batch_size", "32")
     modify_setting("training_steps", "60000")
     modify_setting("learning_rate", "1e-3")
-    modify_setting("training_data", "1,2,3")
+    modify_setting("training_data", "1")
     save_settings()
 
-    print("Settings initialized. Installing training and testing data...")
-    print("Press enter to continue.")
-    pause()
-
-    import opendatasets as od
-    
-    print("Starting Download...")
-    od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
-    print("Download Complete...")
-
     print("Setup complete!")
-    print("Please reopen the application to use AI.")
+    print("Please reopen the application to use the AI.")
     pause()
     exit_routine()
+
+try:
+    load_settings()
+    import commands
+except:
+    try:
+        first_setup()
+    except KeyboardInterrupt:
+        print("ERROR: prematurly exiting program during setup...")
+        exit(1)
+
+def main():
+    print("Welcome to the VLAE (Vulcan League AI Engine) 1.0.0")
+    print("type 'help' to see the list of commands.")
+    print("type 'manual' for a basic tutorial on what to do.")
+
+    commands.main()
 
 if __name__ == "__main__":
     clear()
