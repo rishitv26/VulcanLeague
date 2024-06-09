@@ -13,3 +13,4 @@ usefull things to keep in mind:
 - https://www.kaggle.com/code/danielhavir/vesuvius-challenge-example-submission/notebook
 
 To download, install this repository as a ZIP file and run main.py. Follow the instructions and setups as required. Then type manual for the instructions and profit.
+Make sure when the Ink is outputed you take a screenshot since it cant save well.

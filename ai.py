@@ -327,6 +327,7 @@ def eval_model():
     
     util.clear()
     print("Finished! Showing the detected ink...")
+    print("Take your screenshots now, since images will not be saved.")
 
     for i in pred_images:
         plt.imshow(i, cmap='gray')
