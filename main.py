@@ -2,6 +2,7 @@
 # Main file that runs tensorflow network. Run this in server.
 #
 from util import *
+print("Loading...")
 
 def first_setup():
     print("Welcome to the VLAE 1.0.0 (Vulcan League AI Engine)")
