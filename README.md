@@ -12,4 +12,4 @@ usefull things to keep in mind:
 - https://gist.github.com/janpaul123/e7e983f6d1a899ff8354392433be59f9
 - https://www.kaggle.com/code/danielhavir/vesuvius-challenge-example-submission/notebook
 
-
+To download, install this repository as a ZIP file and run main.py. Follow the instructions and setups as required. Then type manual for the instructions and profit.
