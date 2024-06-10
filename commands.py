@@ -33,6 +33,8 @@ def main():
     while True:
         query = input(">>> ")
         cmd_list = query.lower().split()
+        if len(cmd_list) == 0:
+            continue
         cmd = cmd_list[0]
 
         if cmd == "help":
