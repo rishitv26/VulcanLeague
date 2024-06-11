@@ -220,7 +220,7 @@ TRAIN_RUN = True
 
 def load_model():
     base_path = Path(util.SETTINGS["base_path"])
-    train_path = base_path / "train"
+    train_path = os.path.join(base_path, "data\\train")
     all_fragments = sorted([f.name for f in train_path.iterdir()])
     print("All fragments:", all_fragments)
 
@@ -291,7 +291,7 @@ def load_model():
 
 def eval_model():
     # Test:
-    test_path = util.SETTINGS["base_path"] / "test"
+    test_path = os.path.join(util.SETTINGS["base_path"], "data\\test")
     test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]
     print("All fragments to run: ", test_fragments)
     reply = util.ask("Start Ink Detection of the following fragments?> ")
@@ -327,7 +327,7 @@ def eval_model():
     
     util.clear()
     print("Finished! Showing the detected ink...")
-    print("Take your screenshots now, since images will not be saved.")
+    print("Take your screenshots NOW, since images will not be saved.")
 
     for i in pred_images:
         plt.imshow(i, cmap='gray')
