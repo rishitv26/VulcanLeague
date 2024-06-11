@@ -17,26 +17,7 @@ def first_setup():
     else:
         os.system("python -m pip install --upgrade pip")
 
-    if not is_mac():
-        reply = ask("Do you have an NVIDIA GPU setup on this machine?> ")
-        if reply:
-            reply = ask("Install using CUDA version 11.8? Will install 12.1 if not> ")
-            if reply:
-                # install CUDA 11.8
-                os.system("pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu118")
-            else:
-                # install CUDA 12.1
-                os.system("pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121")
-        else:
-            if not is_windows():
-                # linux CPU
-                os.system("pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cpu")
-            else:
-                # windows default
-                os.system("pip3 install torch torchvision")
-    else:
-        # MAC install:
-        os.system("pip3 install torch torchvision")
+    os.system("pip3 install torch torchvision")
 
     print("Installing rest of dependencies...")
     os.system("pip3 install matplotlib numpy pandas scikit-learn tqdm opendatasets")
