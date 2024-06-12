@@ -39,8 +39,9 @@ SETTINGS = {}
 def load_settings():
     file = open("mem.txt", "r")
     for line in file.readlines():
-        data = line.split("=")
-        SETTINGS[data[0]] = data[1]
+        if line != '':
+            data = line.split("=")
+            SETTINGS[data[0]] = data[1]
     file.close()
 
 def modify_setting(setting: str, new_data: str):
@@ -51,10 +52,11 @@ def get_setting(setting: str):
 
 def save_settings():
     file = open("mem.txt", 'w')
-    lines = []
+    file.write("")
+    file.close()
+    file = open("mem.txt", "a")
     for key in SETTINGS:
-        lines.append(key + "=" + SETTINGS[key] + '\n')
-    file.writelines(lines)
+        file.write(key + "=" + SETTINGS[key])
     file.close()
 
 def exit_routine():

@@ -4,12 +4,7 @@
 import util
 import shutil
 import os
-try:
-    import ai
-except:
-    print("WARNING: Dependencies (probably torch) not installed correctly.")
-    print("press enter to acknoledge")
-    util.pause()
+import ai
 
 def illegal_argument(x: int):
     print("ERROR: Invalid Argument Call")

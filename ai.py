@@ -10,7 +10,9 @@ from types import SimpleNamespace
 from typing import Dict, List, Optional, Tuple
 import warnings
 import util
+import shutil
 import opendatasets as od
+from zipfile import ZipFile 
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -335,6 +337,19 @@ def eval_model():
     # TODO Save results.
 
 def download_data():
-    print("Starting Download...")
-    od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
-    print("Download Complete...")
+    try:
+        print("Starting Download...")
+        od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
+        print("Download Complete...")
+        print("Starting extraction proccess...")
+        with ZipFile(util.get_setting("base_path") + "\\data\\vesuvius-challenge-ink-detection\\vesuvius-challenge-ink-detection.zip", 'r') as zObject: 
+            zObject.extractall(path=util.get_setting("base_path") + "\\data")
+        print("Extraction complete! Cleaning up...")
+        shutil.rmtree("data/vesuvius-challenge-ink-detection")
+        
+    except KeyboardInterrupt:
+        print("ERROR: exiting prematurly. Data installation incomplete.")
+        print("deleting corrupt data...")
+        if os.path.isdir("data"):
+            shutil.rmtree("data")
+        util.exit_routine()
