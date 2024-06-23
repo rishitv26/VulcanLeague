@@ -29,7 +29,6 @@ def data_not_downloaded():
         return True
 
 def main():
-    util.load_settings()
     while True:
         query = input(">>> ")
         cmd_list = query.lower().split()

@@ -39,7 +39,7 @@ SETTINGS = {}
 def load_settings():
     file = open("mem.txt", "r")
     for line in file.readlines():
-        if line != '':
+        if line != '' and line != '\n':
             data = line.split("=")
             SETTINGS[data[0]] = data[1]
     file.close()
@@ -50,13 +50,18 @@ def modify_setting(setting: str, new_data: str):
 def get_setting(setting: str):
     return SETTINGS[setting]
 
+def remove_trailing_newline(s):
+    if s.endswith('\n'):
+        return s[:-1]
+    return s
+
 def save_settings():
     file = open("mem.txt", 'w')
     file.write("")
     file.close()
     file = open("mem.txt", "a")
     for key in SETTINGS:
-        file.write(key + "=" + SETTINGS[key])
+        file.write(key + "=" + remove_trailing_newline(SETTINGS[key]) + "\n")
     file.close()
 
 def exit_routine():
