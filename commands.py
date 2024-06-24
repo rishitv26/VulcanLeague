@@ -29,6 +29,14 @@ def data_not_downloaded():
         return True
 
 def main():
+    detector = ai.AI(
+        int(util.get_setting("batch_size")),
+        int(util.get_setting("training_steps")),
+        float(util.get_setting("learning_rate")),
+        bool(util.get_setting("train_run"))
+    )
+    detector.base_path(util.get_setting("base_path"))
+    
     while True:
         query = input(">>> ")
         cmd_list = query.lower().split()
@@ -59,8 +67,7 @@ def main():
             print("5. Remove any segments if neccessary.")
             print("6. run the ink evaluation by eval command")
             print("7. snaphot output and save it useful")
-            print("8. Run it through letter detector. (TODO)")
-            print("9. Profit!")
+            print("8. Profit!")
             pass
         elif cmd == "change-setting":
             if len(cmd_list) != 3:
@@ -102,7 +109,7 @@ def main():
             print("Press enter when you are ready to continue.")
             util.pause()
             util.clear()
-            ai.load_model()
+            detector.load_model([i for i in util.get_setting("training_data").split(",")])
         elif cmd == "eval":
             print("Preparing for ink evaluation...\n")
             print("DO NOT let machine turn off or sleep during this process.")
@@ -110,7 +117,7 @@ def main():
             print("Press enter when you are ready to continue.")
             util.pause()
             util.clear()
-            ai.eval_model()
+            detector.eval_model(float(util.get_setting("threshold")))
         else:
             print("ERROR: Could not recongnize command: '" + cmd + "'.")
         

@@ -1,13 +1,8 @@
 ############################################## Imports:
 import os
 import gc
-import glob
-import json
-from collections import defaultdict
-import multiprocessing as mp
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
 import warnings
 import util
 import shutil
@@ -15,7 +10,6 @@ import opendatasets as od
 from zipfile import ZipFile 
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import numpy as np
 import pandas as pd
 import PIL.Image as Image
@@ -213,50 +207,57 @@ class InkDetector(torch.nn.Module):
         features = self.encoder(x)
         return self.decoder(features)
 
-BATCH_SIZE = int(util.get_setting("batch_size"))
-TRAINING_STEPS = int(util.get_setting("training_steps")) # 60000
-LEARNING_RATE = float(util.get_setting("learning_rate")) # 1e-3
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = InkDetector().to(DEVICE)
-TRAIN_RUN = True
+################################################## AI:
+class AI:
+    def __init__(self, batch_size: int, training_steps: int, learning_rate: float, train_run: bool):
+        self.batch_size = batch_size
+        self.training_steps = training_steps
+        self.learning_rate = learning_rate
+        self.train_run = train_run
+        
+        self.DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = InkDetector().to(self.DEVICE)
+        
+        self.base_path = ""
+    
+    def set_basepath(self, path: str):
+        self.base_path = path
+    
+    def download_data(self):
+        try:
+            print("Starting Download...")
+            od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
+            print("Download Complete...")
+            print("Starting extraction proccess...")
+            with ZipFile(self.base_path + "\\data\\vesuvius-challenge-ink-detection\\vesuvius-challenge-ink-detection.zip", 'r') as zObject: 
+                zObject.extractall(path=self.base_path + "\\data")
+            print("Extraction complete! Cleaning up...")
+            shutil.rmtree("data/vesuvius-challenge-ink-detection")
+            
+        except KeyboardInterrupt:
+            print("ERROR: exiting prematurly. Data installation incomplete.")
+            print("deleting corrupt data...")
+            if os.path.isdir("data"):
+                shutil.rmtree("data")
+            util.exit_routine()
 
-def load_model():
-    base_path = Path(util.SETTINGS["base_path"])
-    train_path = os.path.join(base_path, "data\\train")
-    all_fragments = sorted([f.name for f in train_path.iterdir()])
-    print("All fragments:", all_fragments)
-
-    # load amount of fragments for training:
-    train_fragments = [train_path / fragment_name for fragment_name in util.get_setting("training_data").split(",")]
-    train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
-    train_loader = thd.DataLoader(train_dset, batch_size=BATCH_SIZE, shuffle=True)
-
-    print("Num batches:", len(train_loader))
-    print("Num items (pixels)", len(train_dset))
-    print("Loaded dataset for training, generating model...")
-
-    ########################################################### Train
-    if util.SETTINGS["trained"] == "true":
-        TRAIN_RUN = False
-
-    warnings.simplefilter('ignore', UndefinedMetricWarning)
-    if TRAIN_RUN:
+    def train_model(self, train_loader):
         print("Model Generated, training model...")
         criterion = nn.BCEWithLogitsLoss()
-        optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=LEARNING_RATE, total_steps=TRAINING_STEPS)
-        model.train()
+        optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.learning_rate, total_steps=self.training_steps)
+        self.model.train()
         running_loss = 0.0
         running_accuracy = 0.0
         running_fbeta = 0.0
         denom = 0
-        pbar = tqdm(enumerate(train_loader), total=TRAINING_STEPS)
+        pbar = tqdm(enumerate(train_loader), total=self.training_steps)
         for i, (subvolumes, inklabels) in pbar:
-            if i >= TRAINING_STEPS:
+            if i >= self.training_steps:
                 break
             optimizer.zero_grad()
-            outputs = model(subvolumes.to(DEVICE))
-            loss = criterion(outputs, inklabels.to(DEVICE))
+            outputs = self.model(subvolumes.to(self.DEVICE))
+            loss = criterion(outputs, inklabels.to(self.DEVICE))
             loss.backward()
             optimizer.step()
             scheduler.step()
@@ -273,83 +274,80 @@ def load_model():
                 running_fbeta = 0.
                 denom = 0
 
-        torch.save(model.state_dict(), base_path / "model.pt")
+        torch.save(self.model.state_dict(), self.base_path / "model.pt")
         util.modify_setting("trained", "true")
-    else:
-        print("Loading model configurations into memory...")
-        model_weights = torch.load("model.pt")
-        model.load_state_dict(model_weights)
 
-    print("Model successfully trained.")
+    def load_model(self, training_data: list):
+        train_path = os.path.join(self.base_path, "data\\train")
+        all_fragments = sorted([f.name for f in train_path.iterdir()])
+        print("All fragments to train with:", all_fragments)
 
-    # Clear memory to free RAM:
-    train_dset.labels = None
-    train_dset.image_stacks = []
-    del train_loader, train_dset
-    gc.collect()
+        # load amount of fragments for training:
+        train_fragments = [train_path / fragment_name for fragment_name in training_data]
+        train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
+        train_loader = thd.DataLoader(train_dset, batch_size=self.batch_size, shuffle=True)
 
+        print("Num batches:", len(train_loader))
+        print("Num items (pixels)", len(train_dset))
+        print("Loaded dataset for training, generating model...")
+        
+        warnings.simplefilter('ignore', UndefinedMetricWarning)
+        if self.train_run:
+            self.train_model(train_loader)
+        else:
+            print("Loading model configurations into memory...")
+            model_weights = torch.load("model.pt")
+            self.model.load_state_dict(model_weights)
 
-############################################################################## Evaluate
+        print("Model successfully loaded.")
 
-def eval_model():
-    # Test:
-    test_path = os.path.join(util.SETTINGS["base_path"], "data\\test")
-    test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]
-    print("All fragments to run: ", test_fragments)
-    reply = util.ask("Start Ink Detection of the following fragments?> ")
-    if not reply:
-        return None
-    pred_images = []
-    model.eval()
-    for test_fragment in test_fragments:
-        outputs = []
-        eval_dset = SubvolumeDataset(fragments=[test_fragment], voxel_shape=(48, 64, 64), load_inklabels=False)
-        eval_loader = thd.DataLoader(eval_dset, batch_size=BATCH_SIZE, shuffle=False)
-        with torch.no_grad():
-            for i, (subvolumes, _) in enumerate(tqdm(eval_loader)):
-                output = model(subvolumes.to(DEVICE)).view(-1).sigmoid().cpu().numpy()
-                outputs.append(output)
-        # we only load 1 fragment at a time
-        image_shape = eval_dset.image_stacks[0].shape[1:]
-        eval_dset.labels = None
-        eval_dset.image_stacks = None
-        del eval_loader
+        # Clear memory to free RAM:
+        train_dset.labels = None
+        train_dset.image_stacks = []
+        del train_loader, train_dset
         gc.collect()
 
-        pred_image = np.zeros(image_shape, dtype=np.uint8)
-        outputs = np.concatenate(outputs)
-        for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
-            pred_image[y ,x] = prob > 0.4
-        pred_images.append(pred_image)
+    def eval_model(self, threshold: float):
+        # Test:
+        test_path = os.path.join(self.base_path, "data\\test")
+        test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]
+        print("All fragments to run: ", test_fragments)
+        reply = util.ask("Start Ink Detection of the following fragments?> ")
+        if not reply:
+            return None
+        pred_images = []
+        self.model.eval()
+        for test_fragment in test_fragments:
+            outputs = []
+            eval_dset = SubvolumeDataset(fragments=[test_fragment], voxel_shape=(48, 64, 64), load_inklabels=False)
+            eval_loader = thd.DataLoader(eval_dset, batch_size=self.batch_size, shuffle=False)
+            with torch.no_grad():
+                for i, (subvolumes, _) in enumerate(tqdm(eval_loader)):
+                    output = self.model(subvolumes.to(self.DEVICE)).view(-1).sigmoid().cpu().numpy()
+                    outputs.append(output)
+            # we only load 1 fragment at a time
+            image_shape = eval_dset.image_stacks[0].shape[1:]
+            eval_dset.labels = None
+            eval_dset.image_stacks = None
+            del eval_loader
+            gc.collect()
+
+            pred_image = np.zeros(image_shape, dtype=np.uint8)
+            outputs = np.concatenate(outputs)
+            for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
+                pred_image[y, x] = prob > threshold
+            pred_images.append(pred_image)
+            
+            eval_dset.pixels = None
+            del eval_dset
+            gc.collect()
+            print("Finished this segment-> ", test_fragment)
         
-        eval_dset.pixels = None
-        del eval_dset
-        gc.collect()
-        print("Finished this segment->", test_fragment)
-    
-    util.clear()
-    print("Finished! Showing the detected ink...")
-    print("Take your screenshots NOW, since images will not be saved.")
+        util.clear()
+        print("Finished! Showing the detected ink...")
+        print("Take your screenshots NOW, since images will not be saved.")
 
-    for i in pred_images:
-        plt.imshow(i, cmap='gray')
+        for i in pred_images:
+            plt.imshow(i, cmap='gray')
 
-    # TODO Save results.
-
-def download_data():
-    try:
-        print("Starting Download...")
-        od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
-        print("Download Complete...")
-        print("Starting extraction proccess...")
-        with ZipFile(util.get_setting("base_path") + "\\data\\vesuvius-challenge-ink-detection\\vesuvius-challenge-ink-detection.zip", 'r') as zObject: 
-            zObject.extractall(path=util.get_setting("base_path") + "\\data")
-        print("Extraction complete! Cleaning up...")
-        shutil.rmtree("data/vesuvius-challenge-ink-detection")
-        
-    except KeyboardInterrupt:
-        print("ERROR: exiting prematurly. Data installation incomplete.")
-        print("deleting corrupt data...")
-        if os.path.isdir("data"):
-            shutil.rmtree("data")
-        util.exit_routine()
+        # TODO Save result as an image file.

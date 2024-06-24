@@ -1,5 +1,5 @@
 #
-# Main file that runs tensorflow network. Run this in server.
+# Main file that runs everything. Run this in server.
 #
 from util import *
 print("Loading...")
@@ -32,6 +32,7 @@ def first_setup():
     modify_setting("training_steps", "60000")
     modify_setting("learning_rate", "1e-3")
     modify_setting("training_data", "1")
+    modify_setting("threshold", "0.4")
 
     print("Setup complete!")
     print("Please reopen the application to use the AI.")

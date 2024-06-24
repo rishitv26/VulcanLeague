@@ -3,6 +3,7 @@
 #
 import os
 import platform
+import re
 
 # check if platform is windows:
 def is_windows():
@@ -37,23 +38,32 @@ def ask(string: str):
 SETTINGS = {}
 
 def load_settings():
+    data_pattern = re.compile(r'^[^\s=]+=[^\s=]+\n$')
     file = open("mem.txt", "r")
+    
     for line in file.readlines():
-        if line != '' and line != '\n':
+        if data_pattern.match(line):
+            
             data = line.split("=")
+            for i in range(len(data)):
+                data[i].replace('\n', '')
+                data[i].replace(' ', '')
+            
             SETTINGS[data[0]] = data[1]
+    
     file.close()
 
 def modify_setting(setting: str, new_data: str):
+    if not (setting in SETTINGS):
+        print("ERROR: setting '" + setting + "' does not exist.")
+        return None
     SETTINGS[setting] = new_data
 
 def get_setting(setting: str):
+    if not (setting in SETTINGS):
+        print("ERROR: setting '" + setting + "' does not exist.")
+        return None
     return SETTINGS[setting]
-
-def remove_trailing_newline(s):
-    if s.endswith('\n'):
-        return s[:-1]
-    return s
 
 def save_settings():
     file = open("mem.txt", 'w')
@@ -61,7 +71,7 @@ def save_settings():
     file.close()
     file = open("mem.txt", "a")
     for key in SETTINGS:
-        file.write(key + "=" + remove_trailing_newline(SETTINGS[key]) + "\n")
+        file.write(key + "=" + SETTINGS[key] + "\n")
     file.close()
 
 def exit_routine():
