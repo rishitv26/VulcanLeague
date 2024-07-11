@@ -41,22 +41,21 @@ def load_settings():
     file = open("mem.txt", "r")
     
     for line in file.readlines():
-        data = line.split("=")
+        try:
+            data = line.split("=")
+        except:
+            continue
         for i in range(len(data)):
             data[i].replace('\n', '')
             
-        SETTINGS[data[0]] = data[1]
+        SETTINGS[data[0]] = data[1].rstrip('\n')
     
     file.close()
-    
-    for key in SETTINGS:
-        SETTINGS[key].replace('\n', '')
 
 def modify_setting(setting: str, new_data: str):
     SETTINGS[setting] = new_data
 
 def get_setting(setting: str):
-    print(SETTINGS)
     if not (setting in SETTINGS):
         print("ERROR: setting '" + setting + "' does not exist.")
         return None
