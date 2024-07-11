@@ -33,9 +33,9 @@ def main():
         int(util.get_setting("batch_size")),
         int(util.get_setting("training_steps")),
         float(util.get_setting("learning_rate")),
-        bool(util.get_setting("train_run"))
+        bool(util.get_setting("trained"))
     )
-    detector.base_path(util.get_setting("base_path"))
+    detector.set_basepath(util.get_setting("base_path"))
     
     while True:
         query = input(">>> ")

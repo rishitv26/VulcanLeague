@@ -38,28 +38,25 @@ def ask(string: str):
 SETTINGS = {}
 
 def load_settings():
-    data_pattern = re.compile(r'^[^\s=]+=[^\s=]+\n$')
     file = open("mem.txt", "r")
     
     for line in file.readlines():
-        if data_pattern.match(line):
+        data = line.split("=")
+        for i in range(len(data)):
+            data[i].replace('\n', '')
             
-            data = line.split("=")
-            for i in range(len(data)):
-                data[i].replace('\n', '')
-                data[i].replace(' ', '')
-            
-            SETTINGS[data[0]] = data[1]
+        SETTINGS[data[0]] = data[1]
     
     file.close()
+    
+    for key in SETTINGS:
+        SETTINGS[key].replace('\n', '')
 
 def modify_setting(setting: str, new_data: str):
-    if not (setting in SETTINGS):
-        print("ERROR: setting '" + setting + "' does not exist.")
-        return None
     SETTINGS[setting] = new_data
 
 def get_setting(setting: str):
+    print(SETTINGS)
     if not (setting in SETTINGS):
         print("ERROR: setting '" + setting + "' does not exist.")
         return None
@@ -71,7 +68,7 @@ def save_settings():
     file.close()
     file = open("mem.txt", "a")
     for key in SETTINGS:
-        file.write(key + "=" + SETTINGS[key] + "\n")
+        file.write(key + "=" + SETTINGS[key].rstrip('\n') + "\n")
     file.close()
 
 def exit_routine():
