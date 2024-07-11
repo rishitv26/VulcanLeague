@@ -67,7 +67,7 @@ def save_settings():
     file.close()
     file = open("mem.txt", "a")
     for key in SETTINGS:
-        file.write(key + "=" + SETTINGS[key].rstrip('\n') + "\n")
+        file.write(key + "=" + SETTINGS[key] + "\n")
     file.close()
 
 def exit_routine():
