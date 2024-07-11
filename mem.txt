@@ -1,0 +1,8 @@
+setup=true
+base_path=C:\Users\srira\OneDrive\Desktop\Coding\VulcanLeague
+trained=false
+batch_size=32
+training_steps=60000
+learning_rate=1e-3
+training_data=1
+threshold=0.4
