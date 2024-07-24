@@ -73,12 +73,15 @@ import util
 
 
 def main():
-    if util.is_installed():
-        import run
-        run.main()
-    else:
-        import install
-        install.main()
+    try:
+        if util.is_installed():
+            import run
+            run.main()
+        else:
+            import install
+            install.main()
+    except:
+        exit(0)
 
 main()
 

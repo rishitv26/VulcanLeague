@@ -26,6 +26,7 @@ def clear():
         os.system("clear")
     
 def pause():
+    print("Press enter to continue...")
     input()
 
 def ask(string: str):
@@ -34,48 +35,6 @@ def ask(string: str):
         return True
     else:
         return False
-
-SETTINGS = {}
-
-def load_settings():
-    try:
-        file = open("mem.txt", "r")
-    except:
-        file = open("mem.txt", 'w')
-    
-    for line in file.readlines():
-        try:
-            data = line.split("=")
-        except:
-            continue
-        for i in range(len(data)):
-            data[i].replace('\n', '')
-            
-        SETTINGS[data[0]] = data[1].rstrip('\n')
-    
-    file.close()
-
-def modify_setting(setting: str, new_data: str):
-    SETTINGS[setting] = new_data
-
-def get_setting(setting: str):
-    if not (setting in SETTINGS):
-        print("ERROR: setting '" + setting + "' does not exist.")
-        return None
-    return SETTINGS[setting]
-
-def save_settings():
-    file = open("mem.txt", 'w')
-    file.write("")
-    file.close()
-    file = open("mem.txt", "a")
-    for key in SETTINGS:
-        file.write(key + "=" + SETTINGS[key] + "\n")
-    file.close()
-
-def exit_routine():
-    save_settings()
-    exit(0)
 
 # Checks if installation of VLAE has been done properly, and return true or false.
 def is_installed():

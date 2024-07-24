@@ -11,6 +11,8 @@ class Config:
             file = open(self.file_name, "r")
         except:
             file = open(self.file_name, 'w')
+            file.close()
+            file = open(self.file_name, "r")
         
         for line in file.readlines():
             try:
@@ -23,4 +25,31 @@ class Config:
         
         file.close()
     
-    def edit(self, )
+    def edit(self, setting: str, new_value: str):
+        if not setting in self.SETTINGS:
+            raise ValueError("ERROR, setting '" + setting + "' does not exist.")
+        else:
+            self.SETTINGS[setting] = new_value
+    
+    def get(self, setting: str):
+        if not setting in self.SETTINGS:
+            raise ValueError("ERROR, setting '" + setting + "' does not exist.")
+        else:
+            return self.SETTINGS[setting]
+        
+    def add(self, setting: str, new_value: str):
+        if setting in self.SETTINGS:
+            raise ValueError("ERROR, setting '" + setting + "' already exists.")
+        else:
+            self.SETTINGS[setting] = new_value
+    
+    def save(self):
+        file = open(self.file_name, 'w')
+        file.write("")
+        file.close()
+        file = open(self.file_name, "a")
+        for key in self.SETTINGS:
+            file.write(key + "=" + self.SETTINGS[key] + "\n")
+        file.close()
+
+

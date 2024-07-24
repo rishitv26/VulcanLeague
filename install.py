@@ -1,5 +1,7 @@
 
 import util
+import os
+from config import Config
 
 
 def main():
@@ -19,17 +21,15 @@ def main():
     os.system("pip3 install -r requirements.txt")
     print("Dependency installation complete! initializing settings...")
     
-    # TODO: Config CLASS
-
-    # load_settings()
-    # modify_setting("setup", "true")
-    # modify_setting("base_path", os.getcwd())
-    # modify_setting("trained", "false")
-    # modify_setting("batch_size", "32")
-    # modify_setting("training_steps", "60000")
-    # modify_setting("learning_rate", "1e-3")
-    # modify_setting("training_data", "1")
-    # modify_setting("threshold", "0.4")
+    config = Config()
+    config.add("setup", "true")
+    config.add("base_path", os.getcwd())
+    config.add("trained", "false")
+    config.add("batch_size", "32")
+    config.add("training_steps", "60000")
+    config.add("learning_rate", "1e-3")
+    config.add("training_data", "1")
+    config.add("threshold", "0.4")
 
     print("Setup complete!")
     print("Please reopen the application to use the AI.")
