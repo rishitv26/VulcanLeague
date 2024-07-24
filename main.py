@@ -4,7 +4,7 @@
 
 
 import util
-# print("Loading...")
+print("Loading...")
 
 # def first_setup():
 #     print("Welcome to the VLAE 1.0.0 (Vulcan League AI Engine)")
