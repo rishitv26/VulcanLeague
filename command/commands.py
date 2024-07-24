@@ -4,7 +4,7 @@
 import util
 import shutil
 import os
-import ai
+import AI.ai as ai
 
 def illegal_argument(x: int):
     print("ERROR: Invalid Argument Call")

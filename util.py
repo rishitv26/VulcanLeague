@@ -38,7 +38,10 @@ def ask(string: str):
 SETTINGS = {}
 
 def load_settings():
-    file = open("mem.txt", "r")
+    try:
+        file = open("mem.txt", "r")
+    except:
+        file = open("mem.txt", 'w')
     
     for line in file.readlines():
         try:
@@ -71,6 +74,13 @@ def save_settings():
     file.close()
 
 def exit_routine():
-    # special routine to exit.
     save_settings()
     exit(0)
+
+# Checks if installation of VLAE has been done properly, and return true or false.
+def is_installed():
+    # TODO: check if libraries are working, and if not, rerun installation and fix issues.
+    if os.path.exists("config.txt"):
+        return False
+    else:
+        return True
