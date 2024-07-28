@@ -30,6 +30,7 @@ def main():
     config.add("learning_rate", "1e-3")
     config.add("training_data", "1")
     config.add("threshold", "0.4")
+    config.save()
 
     print("Setup complete!")
     print("Please reopen the application to use the AI.")

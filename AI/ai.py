@@ -21,6 +21,8 @@ import torch.optim as optim
 import torch.utils.data as thd
 from tqdm import tqdm
 
+from ..config import Config
+
 ################################################## Data:
 class SubvolumeDataset(thd.Dataset):
     def __init__(
@@ -222,26 +224,8 @@ class AI:
     
     def set_basepath(self, path: str):
         self.base_path = path
-    
-    def download_data(self):
-        try:
-            print("Starting Download...")
-            od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
-            print("Download Complete...")
-            print("Starting extraction proccess...")
-            with ZipFile(self.base_path + "\\data\\vesuvius-challenge-ink-detection\\vesuvius-challenge-ink-detection.zip", 'r') as zObject: 
-                zObject.extractall(path=self.base_path + "\\data")
-            print("Extraction complete! Cleaning up...")
-            shutil.rmtree("data/vesuvius-challenge-ink-detection")
-            
-        except KeyboardInterrupt:
-            print("ERROR: exiting prematurly. Data installation incomplete.")
-            print("deleting corrupt data...")
-            if os.path.isdir("data"):
-                shutil.rmtree("data")
-            util.exit_routine()
 
-    def train_model(self, train_loader):
+    def train_model(self, train_loader, config: Config):
         print("Model Generated, training model...")
         criterion = nn.BCEWithLogitsLoss()
         optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate)
@@ -274,8 +258,8 @@ class AI:
                 running_fbeta = 0.
                 denom = 0
 
-        torch.save(self.model.state_dict(), self.base_path / "model.pt")
-        util.modify_setting("trained", "true")
+        torch.save(self.model.state_dict(), os.path.join(self.base_path, "model.pt"))
+        config.get("trained", "true")
 
     def load_model(self, training_data: list):
         train_path = os.path.join(self.base_path, "data\\train")
@@ -296,7 +280,7 @@ class AI:
             self.train_model(train_loader)
         else:
             print("Loading model configurations into memory...")
-            model_weights = torch.load("model.pt")
+            model_weights = torch.load(os.path.join(self.base_path, "model.pt"))
             self.model.load_state_dict(model_weights)
 
         print("Model successfully loaded.")
@@ -351,3 +335,23 @@ class AI:
             plt.imshow(i, cmap='gray')
 
         # TODO Save result as an image file.
+
+def download_data():
+    config = Config()
+    
+    try:
+        print("Starting Download...")
+        od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
+        print("Download Complete...")
+        print("Starting extraction proccess...")
+        with ZipFile(config.get("base_path") + "\\data\\vesuvius-challenge-ink-detection\\vesuvius-challenge-ink-detection.zip", 'r') as zObject:
+            zObject.extractall(path=config.get("base_path") + "\\data")
+        print("Extraction complete! Cleaning up...")
+        shutil.rmtree("data/vesuvius-challenge-ink-detection")
+        
+    except KeyboardInterrupt:
+        print("ERROR: exiting prematurly. Data installation incomplete.")
+        print("deleting corrupt data...")
+        if os.path.isdir("data"):
+            shutil.rmtree("data")
+        exit(1)

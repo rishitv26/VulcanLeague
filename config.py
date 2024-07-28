@@ -27,13 +27,13 @@ class Config:
     
     def edit(self, setting: str, new_value: str):
         if not setting in self.SETTINGS:
-            raise ValueError("ERROR, setting '" + setting + "' does not exist.")
+            raise KeyError("ERROR, setting '" + setting + "' does not exist.")
         else:
             self.SETTINGS[setting] = new_value
     
     def get(self, setting: str):
         if not setting in self.SETTINGS:
-            raise ValueError("ERROR, setting '" + setting + "' does not exist.")
+            raise KeyError("ERROR, setting '" + setting + "' does not exist.")
         else:
             return self.SETTINGS[setting]
         

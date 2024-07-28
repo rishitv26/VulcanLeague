@@ -1,5 +1,6 @@
 
-def main():
+# TODO make more comprehensive.
+def main(cmd_list, config, detector):
     print("1. Choose between training data combinations of the following: 1; 1,2; 1,2,3. DO NOT PUT ANYTHING ELSE")
     print("2. When chosen, set it as value for training_data setting using change-setting")
     print("3. train the model by train command")

@@ -1,6 +1,6 @@
 
-
-def main():
+# TODO make more comprehensive
+def main(cmd_list, config, detector):
     print("clear/cls - clear the console output")
     print("exit - stop the VLAE routine")
     print("manual - basic instructions for running VLAE")

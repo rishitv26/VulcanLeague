@@ -1,5 +1,10 @@
+from errors import *
+import os
+import util
+from ..config import Config
+from AI.ai import AI
 
-def main():
+def main(cmd_list, config: Config, detector: AI):
     if not os.path.isdir("data"):
         reply = data_not_downloaded()
         if reply:
@@ -10,4 +15,8 @@ def main():
     print("Press enter when you are ready to continue.")
     util.pause()
     util.clear()
-    detector.load_model([i for i in util.get_setting("training_data").split(",")])
+    try:
+        detector.load_model([i for i in config.get("training_data").split(",")])
+    except:
+        print("There was an error in loading the model. Please check your settings to ensure they are correct.")
+        print("If error persists, contact the developers or start an issue at our repository.")

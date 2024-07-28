@@ -7,67 +7,50 @@ import os
 import AI.ai as ai
 from command import _help, _manual, _change_setting, _get_setting, _add_segment, _rm_segment, _eval, _train
 
-def illegal_argument(x: int):
-    print("ERROR: Invalid Argument Call")
-    print(f"Expected {x} arguments.")
-
-def segment_exists():
-    print("ERROR: This segment already exists with the same name.")
-
-def segment_doesnt_exist():
-    print("ERROR: This segment does not exist.")
-
-def setting_doesnt_exist():
-    print("ERROR: This setting has not been defined or doesnt exist.")
-
-def data_not_downloaded():
-    print("ERROR: The data required to train the model is not yet installed.\n")
-    reply = util.ask("Install them now?> ")
-    if reply:
-        ai.download_data()
-        return False
-    else:
-        return True
-
 def main():
     print("Welcome to the VLAE (Vulcan League AI Engine) 1.0.0")
     print("type 'help' to see the list of commands.")
     print("type 'manual' for a basic tutorial on what to do.")
     
-    # detector = ai.AI(
-    #     int(util.get_setting("batch_size")),
-    #     int(util.get_setting("training_steps")),
-    #     float(util.get_setting("learning_rate")),
-    #     bool(util.get_setting("trained"))
-    # )
-    # detector.set_basepath(util.get_setting("base_path"))
+    config = Config()
+    detector = ai.AI(
+        int(config.get("batch_size")),
+        int(config.get("training_steps")),
+        float(config.get("learning_rate")),
+        bool(config.get("trained"))
+    )
+    detector.set_basepath(config.get("base_path"))
     
     while True:
         query = input(">>> ")
-        cmd_list = query.lower().split()
+        cmd_list = query.split()
         if len(cmd_list) == 0:
             continue
         cmd = cmd_list[0]
 
         if cmd == "help":
-            _help.main()
+            _help.main(cmd_list, config, detector)
         elif cmd == "clear" or cmd == "cls":
-            util.clear()
+            util.clear(cmd_list, config, detector)
         elif cmd == "exit":
-            util.exit_routine()
+            util.exit_routine(cmd_list, config, detector)
         elif cmd == "manual":
-            _manual.main()
+            _manual.main(cmd_list, config, detector)
         elif cmd == "change-setting":
-            _change_setting.main()
+            _change_setting.main(cmd_list, config, detector)
         elif cmd == "get-setting":
-            _get_setting.main()
+            _get_setting.main(cmd_list, config, detector)
         elif cmd == "add-segment":
-            _add_segment.main()
+            _add_segment.main(cmd_list, config, detector)
         elif cmd == "rm-segment":
-            _rm_segment.main()
+            _rm_segment.main(cmd_list, config, detector)
         elif cmd == "train":
-            _train.main()
+            _train.main(cmd_list, config, detector)
         elif cmd == "eval":
-            _eval.main()
+            _eval.main(cmd_list, config, detector)
         else:
             print("ERROR: Could not recongnize command: '" + cmd + "'.")
+
+        config.save()
+
+

@@ -3,7 +3,6 @@
 #
 import os
 import platform
-import re
 
 # check if platform is windows:
 def is_windows():
@@ -24,11 +23,13 @@ def clear():
         os.system("cls")
     else:
         os.system("clear")
-    
+
+# prompts the user to press enter to continue.   
 def pause():
     print("Press enter to continue...")
     input()
 
+# asks a user from a given prompt. will return true if user said yes, and false if no.
 def ask(string: str):
     ans = input(string)
     if ans.lower() == "yes" or ans.lower() == "y":
