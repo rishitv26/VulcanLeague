@@ -1,4 +1,4 @@
-from . import util
+from .. import util
 from AI import ai
 
 def illegal_argument(x: int):

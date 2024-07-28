@@ -1,4 +1,4 @@
-from errors import *
+from .errors import *
 from ..config import Config
 
 

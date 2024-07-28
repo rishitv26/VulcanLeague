@@ -1,5 +1,5 @@
-from errors import *
-from . import util
+from .errors import *
+from .. import util
 from ..config import Config
 from AI.ai import AI
 

@@ -9,15 +9,15 @@ print("Loading...")
 import util
 
 def main():
-    try:
+    #try:
         if util.is_installed():
             import run
             run.main()
         else:
             import install
             install.main()
-    except:
-        exit(0)
+    #except:
+    #    exit(0)
 
 main()
 

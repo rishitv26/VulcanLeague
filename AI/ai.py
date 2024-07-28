@@ -4,7 +4,7 @@ import gc
 from pathlib import Path
 from typing import List, Tuple
 import warnings
-import util
+from .. import util
 import shutil
 import opendatasets as od
 from zipfile import ZipFile 

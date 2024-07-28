@@ -1,6 +1,6 @@
-from errors import *
+from .errors import *
 import os
-import util
+from .. import util
 from ..config import Config
 from AI.ai import AI
 

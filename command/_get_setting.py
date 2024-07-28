@@ -1,4 +1,4 @@
-from errors import *
+from .errors import *
 from ..config import Config
 from AI.ai import AI
 
