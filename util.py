@@ -40,7 +40,4 @@ def ask(string: str):
 # Checks if installation of VLAE has been done properly, and return true or false.
 def is_installed():
     # TODO: explicitly check if libraries are working, and if not, rerun installation and fix issues.
-    if os.path.exists("config.txt"):
-        return True
-    else:
-        return False
+    return os.path.exists("config.txt")

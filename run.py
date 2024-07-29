@@ -1,9 +1,6 @@
 
-import os
 from config import Config
 import util
-import shutil
-import os
 import ai as ai
 import _help, _manual, _change_setting, _get_setting, _add_segment, _rm_segment, _eval, _train
 
