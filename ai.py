@@ -7,7 +7,6 @@ import warnings
 import util
 import shutil
 import opendatasets as od
-from zipfile import ZipFile 
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -260,14 +259,15 @@ class AI:
 
         torch.save(self.model.state_dict(), os.path.join(self.base_path, "model.pt"))
         config.get("trained", "true")
+        config.save()
 
-    def load_model(self, training_data: list):
-        train_path = os.path.join(self.base_path, "data\\train")
-        all_fragments = sorted([f.name for f in train_path.iterdir()])
+    def load_model(self, training_data: list, config: Config):
+        train_path = os.path.join(self.base_path, "data\\vesuvius-challenge-ink-detection\\train")
+        all_fragments = sorted(training_data)
         print("All fragments to train with:", all_fragments)
 
         # load amount of fragments for training:
-        train_fragments = [train_path / fragment_name for fragment_name in training_data]
+        train_fragments = [Path(os.path.join(train_path, fragment_name)) for fragment_name in training_data]
         train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
         train_loader = thd.DataLoader(train_dset, batch_size=self.batch_size, shuffle=True)
 
@@ -277,7 +277,7 @@ class AI:
         
         warnings.simplefilter('ignore', UndefinedMetricWarning)
         if self.train_run:
-            self.train_model(train_loader)
+            self.train_model(train_loader, config)
         else:
             print("Loading model configurations into memory...")
             model_weights = torch.load(os.path.join(self.base_path, "model.pt"))
@@ -336,18 +336,11 @@ class AI:
 
         # TODO Save result as an image file.
 
-def download_data():
-    config = Config()
-    
+def download_data():    
     try:
         print("Starting Download...")
         od.download("https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection/data", "data/")
-        print("Download Complete...")
-        print("Starting extraction proccess...")
-        with ZipFile(config.get("base_path") + "\\data\\vesuvius-challenge-ink-detection\\vesuvius-challenge-ink-detection.zip", 'r') as zObject:
-            zObject.extractall(path=config.get("base_path") + "\\data")
-        print("Extraction complete! Cleaning up...")
-        shutil.rmtree("data/vesuvius-challenge-ink-detection")
+        print("Download Complete!")
         
     except KeyboardInterrupt:
         print("ERROR: exiting prematurly. Data installation incomplete.")

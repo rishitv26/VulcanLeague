@@ -1,5 +1,6 @@
 from errors import *
 import shutil
+import os
 from config import Config
 
 def main(cmd_list: list[str], config: Config, detector):
@@ -7,6 +8,7 @@ def main(cmd_list: list[str], config: Config, detector):
         illegal_argument(2)
     else:
         try:
-            shutil.copytree(cmd_list[1], config.get("base_path") + '\\data\\test\\')
+            destination_folder = os.path.join(config.get("base_path") + '\\data\\vesuvius-challenge-ink-detection\\test\\', os.path.basename(cmd_list[1]))
+            shutil.copytree(cmd_list[1], destination_folder)
         except FileExistsError:
             segment_exists()

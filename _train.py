@@ -16,7 +16,8 @@ def main(cmd_list, config: Config, detector: AI):
     util.pause()
     util.clear()
     try:
-        detector.load_model([i for i in config.get("training_data").split(",")])
-    except:
+        detector.load_model([i for i in config.get("training_data").split(",")], config)
+    except Exception as e:
         print("There was an error in loading the model. Please check your settings to ensure they are correct.")
         print("If error persists, contact the developers or start an issue at our repository.")
+        print(f"Error: {e}")
