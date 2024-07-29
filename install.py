@@ -33,7 +33,7 @@ def main():
     config.save()
 
     print("Setup complete!")
-    print("Please reopen the application to use the AI.")
+    util.clear()
     util.pause()
     
     import run
