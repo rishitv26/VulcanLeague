@@ -257,7 +257,7 @@ class AI:
                 running_fbeta = 0.
                 denom = 0
 
-        torch.save(self.model.state_dict(), os.path.join(self.base_path, "model.pt"))
+        torch.save(self.model.state_dict(), os.path.join(self.base_path, "\\data\\model.pt"))
         config.get("trained", "true")
         config.save()
 
@@ -280,7 +280,7 @@ class AI:
             self.train_model(train_loader, config)
         else:
             print("Loading model configurations into memory...")
-            model_weights = torch.load(os.path.join(self.base_path, "model.pt"))
+            model_weights = torch.load(os.path.join(self.base_path, "data\\model.pt"))
             self.model.load_state_dict(model_weights)
 
         print("Model successfully loaded.")
@@ -293,8 +293,8 @@ class AI:
 
     def eval_model(self, threshold: float):
         # Test:
-        test_path = os.path.join(self.base_path, "data\\test")
-        test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]
+        test_path = os.path.join(self.base_path, "data\\vesuvius-challenge-ink-detection\\test")
+        test_fragments = [test_path / fragment_name for fragment_name in Path(test_path).iterdir()]
         print("All fragments to run: ", test_fragments)
         reply = util.ask("Start Ink Detection of the following fragments?> ")
         if not reply:
@@ -309,7 +309,7 @@ class AI:
                 for i, (subvolumes, _) in enumerate(tqdm(eval_loader)):
                     output = self.model(subvolumes.to(self.DEVICE)).view(-1).sigmoid().cpu().numpy()
                     outputs.append(output)
-            # we only load 1 fragment at a time
+            # only load 1 fragment at a time
             image_shape = eval_dset.image_stacks[0].shape[1:]
             eval_dset.labels = None
             eval_dset.image_stacks = None
