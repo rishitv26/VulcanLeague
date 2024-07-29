@@ -4,8 +4,8 @@ from config import Config
 import util
 import shutil
 import os
-import AI.ai as ai
-from command import _help, _manual, _change_setting, _get_setting, _add_segment, _rm_segment, _eval, _train
+import ai as ai
+import _help, _manual, _change_setting, _get_setting, _add_segment, _rm_segment, _eval, _train
 
 def main():
     print("Welcome to the VLAE (Vulcan League AI Engine) 1.0.0")
@@ -31,9 +31,10 @@ def main():
         if cmd == "help":
             _help.main(cmd_list, config, detector)
         elif cmd == "clear" or cmd == "cls":
-            util.clear(cmd_list, config, detector)
+            util.clear()
         elif cmd == "exit":
-            util.exit_routine(cmd_list, config, detector)
+            config.save()
+            exit(0)
         elif cmd == "manual":
             _manual.main(cmd_list, config, detector)
         elif cmd == "change-setting":

@@ -1,5 +1,5 @@
-from .errors import *
-from ..config import Config
+from errors import *
+from config import Config
 
 
 def main(cmd_list: list[str], config: Config, detector):

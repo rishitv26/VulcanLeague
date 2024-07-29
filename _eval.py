@@ -1,7 +1,7 @@
-from .errors import *
-from .. import util
-from ..config import Config
-from AI.ai import AI
+from errors import *
+import util
+from config import Config
+from ai import AI
 
 
 def main(cmd_list, config: Config, detector: AI):

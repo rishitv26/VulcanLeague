@@ -1,6 +1,6 @@
-from .errors import *
-from ..config import Config
-from AI.ai import AI
+from errors import *
+from config import Config
+from ai import AI
 
 def main(cmd_list: list[str], config: Config, detector: AI):
     if len(cmd_list) != 2:

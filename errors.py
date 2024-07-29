@@ -1,5 +1,5 @@
-from .. import util
-from AI import ai
+import util
+import ai
 
 def illegal_argument(x: int):
     print("ERROR: Invalid Argument Call")

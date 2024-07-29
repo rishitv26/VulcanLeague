@@ -1,8 +1,8 @@
-from .errors import *
+from errors import *
 import os
-from .. import util
-from ..config import Config
-from AI.ai import AI
+import util
+from config import Config
+from ai import AI
 
 def main(cmd_list, config: Config, detector: AI):
     if not os.path.isdir("data"):

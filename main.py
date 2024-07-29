@@ -7,17 +7,18 @@ print("Loading...")
 
 
 import util
+import install
+try:
+    import run
+except ModuleNotFoundError:
+    install.main()
+
 
 def main():
-    #try:
-        if util.is_installed():
-            import run
-            run.main()
-        else:
-            import install
-            install.main()
-    #except:
-    #    exit(0)
+    if util.is_installed():
+        run.main()
+    else:
+        install.main()
 
 main()
 

@@ -4,7 +4,7 @@ import gc
 from pathlib import Path
 from typing import List, Tuple
 import warnings
-from .. import util
+import util
 import shutil
 import opendatasets as od
 from zipfile import ZipFile 
@@ -21,7 +21,7 @@ import torch.optim as optim
 import torch.utils.data as thd
 from tqdm import tqdm
 
-from ..config import Config
+from config import Config
 
 ################################################## Data:
 class SubvolumeDataset(thd.Dataset):
