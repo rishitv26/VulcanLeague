@@ -32,7 +32,7 @@ def pause():
 # asks a user from a given prompt. will return true if user said yes, and false if no.
 def ask(string: str):
     ans = input(string)
-    if ans.lower() == "yes" or ans.lower() == "y":
+    if ans.upper() == "YES" or ans.lower() == "y":
         return True
     else:
         return False
