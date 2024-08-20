@@ -1,3 +1,6 @@
+#
+# Credit: Not to dhawan
+#
 ############################################## Imports:
 import os
 import gc
@@ -257,7 +260,7 @@ class AI:
                 running_fbeta = 0.
                 denom = 0
 
-        torch.save(self.model.state_dict(), os.path.join(self.base_path, "\\data\\model.pt"))
+        torch.save(self.model.state_dict(), os.path.join(self.base_path, "data\\model.pt"))
         config.get("trained", "true")
         config.save()
 
