@@ -1,5 +1,5 @@
 #
-# Credit: Not to dhawan
+# Credit: https://www.kaggle.com/code/danielhavir/vesuvius-challenge-example-submission
 #
 ############################################## Imports:
 import os
