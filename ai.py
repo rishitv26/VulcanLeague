@@ -343,6 +343,7 @@ class AI:
 
         for i in pred_images:
             plt.imshow(i, cmap='gray')
+            util.pause()
 
         # TODO Save result as an image file.
 
