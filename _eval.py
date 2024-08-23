@@ -16,4 +16,4 @@ def main(cmd_list, config: Config, detector: AI):
     except Exception as e:
         print("There was an error during the evaluation proccess. Please ensure all settings are valid and correct.")
         print("If error persists, contact the developers or start an issue at our repository.")
-	print(f"Error: {e}")
+        print(f"Error: {e}")
