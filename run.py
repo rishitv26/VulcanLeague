@@ -10,9 +10,9 @@ def main():
     print("type 'manual' for a basic tutorial on what to do.")
         
     config = Config()
-    trained = False
+    trained = True
     if config.get("trained") == "true":
-        trained = True
+        trained = False
     
     detector = ai.AI(
         int(config.get("batch_size")),
