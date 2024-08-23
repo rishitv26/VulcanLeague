@@ -270,21 +270,23 @@ class AI:
 
     def load_model(self, training_data: list, config: Config):
         train_path = os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/train")
-        all_fragments = sorted(training_data)
-        print("All fragments to train with:", all_fragments)
-
-        # load amount of fragments for training:
-        train_fragments = [Path(os.path.join(train_path, fragment_name)) for fragment_name in training_data]
-        train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
-        train_loader = thd.DataLoader(train_dset, batch_size=self.batch_size, shuffle=True)
-
-        print("Num batches:", len(train_loader))
-        print("Num items (pixels)", len(train_dset))
-        print("Loaded dataset for training, generating model...")
         
-        warnings.simplefilter('ignore', UndefinedMetricWarning)
         print("Train Run: " + str(self.train_run))
         if self.train_run:
+            all_fragments = sorted(training_data)
+            print("All fragments to train with:", all_fragments)
+
+            # load amount of fragments for training:
+            train_fragments = [Path(os.path.join(train_path, fragment_name)) for fragment_name in training_data]
+            train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
+            train_loader = thd.DataLoader(train_dset, batch_size=self.batch_size, shuffle=True)
+
+            print("Num batches:", len(train_loader))
+            print("Num items (pixels)", len(train_dset))
+            print("Loaded dataset for training, generating model...")
+            
+            warnings.simplefilter('ignore', UndefinedMetricWarning)
+            
             self.train_model(train_loader, config)
         else:
             print("Loading model configurations into memory...")
