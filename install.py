@@ -5,15 +5,18 @@ from config import Config
 
 def setup_configs():
     config = Config()
-    config.add("setup", "true")
-    config.add("base_path", os.getcwd())
-    config.add("trained", "false")
-    config.add("batch_size", "32")
-    config.add("training_steps", "60000")
-    config.add("learning_rate", "1e-3")
-    config.add("training_data", "1")
-    config.add("threshold", "0.4")
-    config.save()
+    try:
+        config.add("setup", "true")
+        config.add("base_path", os.getcwd())
+        config.add("trained", "false")
+        config.add("batch_size", "32")
+        config.add("training_steps", "60000")
+        config.add("learning_rate", "1e-3")
+        config.add("training_data", "1")
+        config.add("threshold", "0.4")
+        config.save()
+    except ValueError:
+        print("Using existing settings...")
 
 
 def main():
