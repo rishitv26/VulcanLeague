@@ -288,18 +288,18 @@ class AI:
             warnings.simplefilter('ignore', UndefinedMetricWarning)
             
             self.train_model(train_loader, config)
+            
+            # Clear memory to free RAM:
+            train_dset.labels = None
+            train_dset.image_stacks = []
+            del train_loader, train_dset
+            gc.collect()
         else:
             print("Loading model configurations into memory...")
             model_weights = torch.load(os.path.join(self.base_path, "data/model.pt"))
             self.model.load_state_dict(model_weights)
 
         print("Model successfully loaded.")
-
-        # Clear memory to free RAM:
-        train_dset.labels = None
-        train_dset.image_stacks = []
-        del train_loader, train_dset
-        gc.collect()
 
     def eval_model(self, threshold: float):
         # Test:
