@@ -13,7 +13,7 @@ def main():
     trained = True
     if config.get("trained") == "true":
         trained = False
-	print(trained)
+    print(trained)
     
     detector = ai.AI(
         int(config.get("batch_size")),
