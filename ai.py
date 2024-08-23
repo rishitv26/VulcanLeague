@@ -261,7 +261,7 @@ class AI:
                 denom = 0
 
         torch.save(self.model.state_dict(), os.path.join(self.base_path, "data/model.pt"))
-        config.get("trained", "true")
+        config.edit("trained", "true")
         config.save()
 
     def load_model(self, training_data: list, config: Config):
