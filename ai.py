@@ -213,11 +213,15 @@ class InkDetector(torch.nn.Module):
 
 ################################################## AI:
 class AI:
-    def __init__(self, batch_size: int, training_steps: int, learning_rate: float, train_run: bool):
+    def __init__(self, batch_size: int, training_steps: int, learning_rate: float):
         self.batch_size = batch_size
         self.training_steps = training_steps
         self.learning_rate = learning_rate
-        self.train_run = train_run
+        config = Config()
+        if config.get("trained") == "true":
+            self.train_run = False
+        else:
+            self.train_run = True
         
         self.DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = InkDetector().to(self.DEVICE)

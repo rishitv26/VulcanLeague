@@ -9,17 +9,11 @@ def main():
     print("type 'help' to see the list of commands.")
     print("type 'manual' for a basic tutorial on what to do.")
         
-    config = Config()
-    trained = True
-    if config.get("trained") == "true":
-        trained = False
-    print(trained)
-    
+    config = Config()    
     detector = ai.AI(
         int(config.get("batch_size")),
         int(config.get("training_steps")),
         float(config.get("learning_rate")),
-        trained
     )
     detector.set_basepath(config.get("base_path"))
     
