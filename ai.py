@@ -283,6 +283,7 @@ class AI:
         print("Loaded dataset for training, generating model...")
         
         warnings.simplefilter('ignore', UndefinedMetricWarning)
+        print("Train Run: " + str(self.train_run))
         if self.train_run:
             self.train_model(train_loader, config)
         else:
