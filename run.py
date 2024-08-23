@@ -8,12 +8,12 @@ def main():
     print("Welcome to the VLAE (Vulcan League AI Engine) 1.0.0")
     print("type 'help' to see the list of commands.")
     print("type 'manual' for a basic tutorial on what to do.")
-    
+        
+    config = Config()
     trained = False
     if config.get("trained") == "true":
         trained = True
-        
-    config = Config()
+    
     detector = ai.AI(
         int(config.get("batch_size")),
         int(config.get("training_steps")),
