@@ -10,6 +10,7 @@ import warnings
 import util
 import shutil
 import opendatasets as od
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -343,6 +344,8 @@ class AI:
 
         for i in pred_images:
             plt.imshow(i, cmap='gray')
+            for i in range(10):
+                time.sleep(1)
             util.pause()
 
         # TODO Save result as an image file.
