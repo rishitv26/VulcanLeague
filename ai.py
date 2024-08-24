@@ -348,8 +348,12 @@ class AI:
             for i in range(10):
                 time.sleep(1)
             util.pause()
-
-        # TODO Save result as an image file.
+            
+        for i, pred_image in enumerate(pred_images):
+            plt.imshow(pred_image, cmap='gray')
+            file_name = f"predicted_image_{i}.png"  # Or change the extension to '.jpeg'
+            plt.savefig(file_name, format='png')  # Change 'png' to 'jpeg' if you prefer
+            print(f"Saved {file_name}")
 
 def download_data():    
     try:
