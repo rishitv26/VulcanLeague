@@ -344,6 +344,7 @@ class AI:
 
         for i in pred_images:
             plt.imshow(i, cmap='gray')
+            plt.show()
             for i in range(10):
                 time.sleep(1)
             util.pause()
