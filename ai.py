@@ -340,19 +340,20 @@ class AI:
         
         util.clear()
         print("Finished! Showing the detected ink...")
-        print("Take your screenshots NOW, since images will not be saved.")
+        print("To view the next image, close out of the current image (don't worry the image will be saved.)")
 
-        for i in pred_images:
-            plt.imshow(i, cmap='gray')
-            plt.show()
-            for i in range(10):
-                time.sleep(1)
-            util.pause()
+        try:
+            for i in pred_images:
+                plt.imshow(i, cmap='gray')
+                plt.show()
+        except:
+            print("There was an error showing matplotlib window. Saving images...")
+            pass
             
         for i, pred_image in enumerate(pred_images):
             plt.imshow(pred_image, cmap='gray')
             file_name = f"predicted_image_{i}.png"  # Or change the extension to '.jpeg'
-            plt.savefig(file_name, format='png')  # Change 'png' to 'jpeg' if you prefer
+            plt.savefig(file_name, format='png', dpi=600, transparent=True)  # Change 'png' to 'jpeg' if you prefer
             print(f"Saved {file_name}")
 
 def download_data():    
