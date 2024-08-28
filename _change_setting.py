@@ -8,6 +8,7 @@ def main(cmd_list: list[str], config: Config, detector):
     else:
         try:
             config.edit(cmd_list[1], cmd_list[2])
+            config.save()
         except KeyError:
             setting_doesnt_exist()
             return None
