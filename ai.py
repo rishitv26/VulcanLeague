@@ -330,7 +330,7 @@ class AI:
             pred_image = np.zeros(image_shape, dtype=np.uint8)
             outputs = np.concatenate(outputs)
             for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
-                pred_image[y, x] = prob > threshold
+                pred_image[y, x] = prob # > threshold # remove threshold for another feature.
             pred_images.append(pred_image)
             
             eval_dset.pixels = None
