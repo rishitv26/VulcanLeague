@@ -330,7 +330,7 @@ class AI:
             pred_image = np.zeros(image_shape, dtype=np.uint8)
             outputs = np.concatenate(outputs)
             for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
-                pred_image[y, x] = int(prob * 255) # > threshold # remove threshold for another feature. # TODO
+                pred_image[y, x] = prob > threshold # remove threshold for another feature. # TODO
             pred_images.append(pred_image)
             
             eval_dset.pixels = None
@@ -345,15 +345,22 @@ class AI:
         try:
             for i in pred_images:
                 plt.imshow(i, cmap='gray')
+                plt.axis('off')
+                plt.gca().set_position([0, 0, 1, 1])
+                plt.gca().set_axis_off()
+                plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+                plt.margins(0, 0)
                 plt.show()
         except:
             print("There was an error showing matplotlib window. Saving images...")
             pass
             
-        for i, pred_image in enumerate(pred_images):
+        config = Config()
+        
+        for i, pred_image in enumerate(pred_images): # todo
             plt.imshow(pred_image, cmap='gray')
             file_name = f"predicted_image_{i}.png"  # Or change the extension to '.jpeg'
-            plt.savefig(file_name, format='png', dpi=600, transparent=True)  # Change 'png' to 'jpeg' if you prefer
+            plt.savefig(os.path.join( file_name), format='png', bbox_inches='tight', pad_inches=0)  # Change 'png' to 'jpeg' if you prefer
             print(f"Saved {file_name}")
 
 def download_data():    
