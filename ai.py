@@ -307,9 +307,6 @@ class AI:
         test_path = os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/test")
         test_fragments = [test_path / fragment_name for fragment_name in Path(test_path).iterdir()]
         print("All fragments to run: ", test_fragments)
-        reply = util.ask("Start Ink Detection of the following fragments?> ")
-        if not reply:
-            return None
         pred_images = []
         self.model.eval()
         for test_fragment in test_fragments:
@@ -343,7 +340,7 @@ class AI:
             
         config = Config()
         
-        for pred_image in enumerate(pred_images): # todo
+        for i, pred_image in enumerate(pred_images): # todo
             plt.imshow(pred_image, cmap='gray')
             plt.axis('off')
             plt.gca().set_position([0, 0, 1, 1])
@@ -351,7 +348,7 @@ class AI:
             plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
             plt.margins(0, 0)
             
-            file_name = f"image_{threshold}.png"
+            file_name = f"image_{threshold}_{i}.png"
             plt.savefig(os.path.join(config.get("base_path") + "/outputs/", file_name), format='png', bbox_inches='tight', pad_inches=0)
             print(f"Saved {file_name}")
 
