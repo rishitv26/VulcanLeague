@@ -12,7 +12,20 @@ def main(cmd_list, config: Config, detector: AI):
     util.pause()
     util.clear()
     try:
-        detector.eval_model(float(config.get("threshold")))
+        config = Config()
+        
+        # find all thresholds:
+        thresholds = []
+        ts = config.get("threshold")
+        for i in ts.split(","):
+            thresholds.append(float(i))
+        
+        # run on all thresholds:
+        for threshold in thresholds:
+            print(f"Running using {threshold*100}% threshold...")
+            detector.eval_model(threshold)
+            util.clear()
+
     except Exception as e:
         print("There was an error during the evaluation proccess. Please ensure all settings are valid and correct.")
         print("If error persists, contact the developers or start an issue at our repository.")

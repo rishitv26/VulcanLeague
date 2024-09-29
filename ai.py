@@ -330,7 +330,7 @@ class AI:
             pred_image = np.zeros(image_shape, dtype=np.uint8)
             outputs = np.concatenate(outputs)
             for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
-                pred_image[y, x] = prob > threshold # remove threshold for another feature. # TODO
+                pred_image[y, x] = prob > threshold 
             pred_images.append(pred_image)
             
             eval_dset.pixels = None
@@ -339,28 +339,20 @@ class AI:
             print("Finished this segment-> ", test_fragment)
         
         util.clear()
-        print("Finished! Showing the detected ink...")
-        print("To view the next image, close out of the current image (don't worry the image will be saved.)")
-
-        try:
-            for i in pred_images:
-                plt.imshow(i, cmap='gray')
-                plt.axis('off')
-                plt.gca().set_position([0, 0, 1, 1])
-                plt.gca().set_axis_off()
-                plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
-                plt.margins(0, 0)
-                plt.show()
-        except:
-            print("There was an error showing matplotlib window. Saving images...")
-            pass
+        print("Finished! saving ink images...")
             
         config = Config()
         
-        for i, pred_image in enumerate(pred_images): # todo
+        for pred_image in enumerate(pred_images): # todo
             plt.imshow(pred_image, cmap='gray')
-            file_name = f"predicted_image_{i}.png"  # Or change the extension to '.jpeg'
-            plt.savefig(os.path.join( file_name), format='png', bbox_inches='tight', pad_inches=0)  # Change 'png' to 'jpeg' if you prefer
+            plt.axis('off')
+            plt.gca().set_position([0, 0, 1, 1])
+            plt.gca().set_axis_off()
+            plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+            plt.margins(0, 0)
+            
+            file_name = f"image_{threshold}.png"
+            plt.savefig(os.path.join(config.get("base_path") + "/outputs/", file_name), format='png', bbox_inches='tight', pad_inches=0)
             print(f"Saved {file_name}")
 
 def download_data():    
