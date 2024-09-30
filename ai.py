@@ -349,7 +349,9 @@ class AI:
             plt.margins(0, 0)
             
             file_name = f"image_{threshold}_{i}.png"
-            os.mkdir(config.get("base_path") + "/outputs/")
+            if not os.path.isdir("outputs"):
+                os.mkdir(config.get("base_path") + "/outputs")
+            
             plt.savefig(os.path.join(config.get("base_path") + "/outputs/", file_name), format='png', bbox_inches='tight', pad_inches=0)
             print(f"Saved {file_name}")
 
