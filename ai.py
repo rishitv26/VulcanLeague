@@ -13,6 +13,7 @@ import opendatasets as od
 import time
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import numpy as np
 import pandas as pd
 import PIL.Image as Image
@@ -165,11 +166,11 @@ class SubvolumeDataset(thd.Dataset):
         x_max = x + (x_dim // 2)
         y_min = y - (y_dim // 2)
         y_max = y + (y_dim // 2)
-
-        rect = plt.Rectangle(
+        rect = Rectangle(
             (x_min, y_min), x_dim, y_dim, linewidth=2, edgecolor="y", facecolor="none"
         )
         ax.add_patch(rect)
+        plt.show()
         plt.show()
 
 class InkDetector(torch.nn.Module):
@@ -291,7 +292,7 @@ class AI:
             self.train_model(train_loader, config)
             
             # Clear memory to free RAM:
-            train_dset.labels = None
+            train_dset.labels = []
             train_dset.image_stacks = []
             del train_loader, train_dset
             gc.collect()
@@ -319,8 +320,8 @@ class AI:
                     outputs.append(output)
             # only load 1 fragment at a time
             image_shape = eval_dset.image_stacks[0].shape[1:]
-            eval_dset.labels = None
-            eval_dset.image_stacks = None
+            eval_dset.labels = []
+            eval_dset.image_stacks = []
             del eval_loader
             gc.collect()
 
@@ -330,7 +331,7 @@ class AI:
                 pred_image[y, x] = prob > threshold 
             pred_images.append(pred_image)
             
-            eval_dset.pixels = None
+            eval_dset.pixels = np.empty((0, 3), dtype=np.uint16)
             del eval_dset
             gc.collect()
             print("Finished this segment-> ", test_fragment)

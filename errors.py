@@ -28,4 +28,9 @@ def data_not_downloaded():
         return False
     else:
         return True
+
+def segment_not_formated_correctly():
+    print("ERROR: The segment is not formatted correctly.")
+    print("Please ensure that the segment has a 'mask.png' file and a 'surface_volume' folder.")
+    print("If you are sure that the segment is formatted correctly, please contact the developers or start an issue at our repository.")
     
