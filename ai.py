@@ -47,7 +47,7 @@ class SubvolumeDataset(thd.Dataset):
         valid_pixels = []
         for fragment_id, fragment_path in enumerate(self.fragments):
             fragment_path = fragment_path.resolve()  # absolute path
-            mask = np.array(Image.open(str(fragment_path / "mask.png")).convert("1"))
+            mask = np.array(Image.open(Path.joinpath(fragment_path, "mask.png")).convert("1"))
 
             surface_volume_paths = sorted(
                 (fragment_path / "surface_volume").rglob("*.tif")
@@ -83,7 +83,7 @@ class SubvolumeDataset(thd.Dataset):
             if load_inklabels:
                 # binary mask can be stored as np.bool
                 inklabels = (
-                    np.array(Image.open(str(fragment_path / "inklabels.png"))) > 0
+                    np.array(Image.open(Path.joinpath(fragment_path, "inklabels.png"))) > 0
                 )
                 labels.append(inklabels)
 
@@ -173,6 +173,7 @@ class SubvolumeDataset(thd.Dataset):
         plt.show()
         plt.show()
 
+
 class InkDetector(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -212,6 +213,58 @@ class InkDetector(torch.nn.Module):
     def forward(self, x):
         features = self.encoder(x)
         return self.decoder(features)
+
+# This is the basic model architecture for the InkDetector.
+
+"""
+################################################## Better InkDetector:
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.bn1 = nn.BatchNorm3d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv3d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm3d(out_channels)
+        self.downsample = nn.Sequential(
+            nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=stride),
+            nn.BatchNorm3d(out_channels)
+        ) if in_channels != out_channels or stride != 1 else nn.Identity()
+
+    def forward(self, x):
+        identity = self.downsample(x)
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        return self.relu(out + identity)
+
+class InkDetector(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # Encoder using Residual Blocks
+        self.encoder = nn.Sequential(
+            ResidualBlock(1, 16, stride=2),
+            ResidualBlock(16, 32, stride=2),
+            ResidualBlock(32, 64, stride=2),
+            ResidualBlock(64, 128, stride=2),
+            nn.AdaptiveAvgPool3d(1),  # Output shape: (batch_size, 128, 1, 1, 1)
+            nn.Flatten()              # Output shape: (batch_size, 128)
+        )
+        # Decoder: MLP with Dropout
+        self.decoder = nn.Sequential(
+            nn.Linear(128, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.3),
+            nn.Linear(256, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.3),
+            nn.Linear(128, 1)  # Output is a single logit (use sigmoid externally if needed)
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x  # This will be a single logit; use `torch.sigmoid(x)` if you need probability
+"""
 
 ################################################## AI:
 class AI:
