@@ -1,8 +1,9 @@
 matplotlib 
-numpy==1.26.4 
+numpy
 pandas 
 scikit-learn 
 tqdm 
 opendatasets
 torch 
 torchvision
+legacy-cgi

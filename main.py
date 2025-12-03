@@ -16,7 +16,8 @@ def main():
         try:
             import run
             run.main()
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
+            print(e)
             install.main()
     else:
         install.main()

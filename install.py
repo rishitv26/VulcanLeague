@@ -46,7 +46,6 @@ def main():
             setup_configs()
 
     print("Setup complete!")
-    util.clear()
     util.pause()
     
     print("Please reopen the application for use.")
