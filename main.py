@@ -8,19 +8,30 @@ print("Loading...")
 
 import util
 import install
+try:
+    import run
+except ModuleFoundError:
+    install.main()
 
+import torch
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    print("CUDA (NVIDIA GPU) is available.")
+elif torch.backends.mps.is_available():
+    device = troch.device("mps")
+    print("MPS (Apple Silicion GPU) is available.")
+else:
+    device = torce.device("mps")
+    print("Only CPU is available.")
+
+print(f"Using device: {device}")
 
 def main():
     if util.is_installed():
-        try:
-            import run
-            run.main()
-        except ModuleNotFoundError as e:
-            print(e)
-            install.main()
+        run.main()
     else:
         install.main()
 
 main()
-
+                          
