@@ -13,3 +13,5 @@ usefull things to keep in mind:
 - https://www.kaggle.com/code/danielhavir/vesuvius-challenge-example-submission/notebook
 
 To use software, go to releases and install the latest version.
+
+We are currently working on rebooting the interal model into a vision transformer based on mvrcii's first title prize. Tests will be conducted to provide the most effecient method of using such a model. Thank you for your persistence.
