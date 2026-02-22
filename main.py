@@ -5,24 +5,24 @@
 # depending on version and computer, program may take some time to start
 print("Loading...")
 
+
 import util
 import install
 try:
     import run
-except e as ModuleFoundError:
-    print(e)
+except ModuleNotFoundError:
     install.main()
 
 import torch
 
 if torch.cuda.is_available():
-    device = torch.device("cuda")
+    device = torch.device("cuda")  
     print("CUDA (NVIDIA GPU) is available.")
 elif torch.backends.mps.is_available():
-    device = torch.device("mps")
-    print("MPS (Apple Silicion GPU) is available.")
+    device = torch.device("mps")   
+    print("MPS (Apple Silicon GPU) is available.")
 else:
-    device = torch.device("mps")
+    device = torch.device("cpu")
     print("Only CPU is available.")
 
 print(f"Using device: {device}")
@@ -34,4 +34,3 @@ def main():
         install.main()
 
 main()
-                          

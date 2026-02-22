@@ -1,4 +1,3 @@
-
 class Config:
     def __init__(self):
         self.file_name = "config.txt"
@@ -20,7 +19,7 @@ class Config:
             except:
                 continue
             for i in range(len(data)):
-                data[i].replace('\n', '')
+                data[i] = data[i].replace('\n', '')
             self.SETTINGS[data[0]] = data[1].rstrip('\n')
         
         file.close()
@@ -51,5 +50,3 @@ class Config:
         for key in self.SETTINGS:
             file.write(key + "=" + self.SETTINGS[key] + "\n")
         file.close()
-
-

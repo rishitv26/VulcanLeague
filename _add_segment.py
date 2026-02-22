@@ -15,7 +15,7 @@ def main(cmd_list: list[str], config: Config, detector):
             segment_not_formated_correctly()
             return
         try:
-            destination_folder = os.path.join(os.path.join(config.get("base_path"), '/data/vesuvius-challenge-ink-detection/test/'), os.path.basename(cmd_list[1]))
+            destination_folder = os.path.join(config.get("base_path"), 'data/vesuvius-challenge-ink-detection/test/', os.path.basename(cmd_list[1]))  # BUG FIX: removed leading '/' from the path segment — os.path.join treats any component starting with '/' as an absolute path, silently discarding base_path entirely
             shutil.copytree(cmd_list[1], destination_folder)
         except FileExistsError:
             segment_exists()

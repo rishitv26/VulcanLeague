@@ -358,8 +358,8 @@ class AI:
 
     def eval_model(self, threshold: float):
         # Test:
-        test_path = os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/test")
-        test_fragments = [test_path / fragment_name for fragment_name in Path(test_path).iterdir()]
+        test_path = Path(os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/test"))  # BUG FIX: wrap in Path() so the / operator works below
+        test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]          # BUG FIX: was test_path (str) / fragment_name — str doesn't support / operator, causing TypeError
         print("All fragments to run: ", test_fragments)
         pred_images = []
         self.model.eval()
