@@ -55,16 +55,37 @@ class SubvolumeDataset(thd.Dataset):
             z_dim, y_dim, x_dim = voxel_shape
 
             z_mid = len(surface_volume_paths) // 2
-            z_start, z_end = z_mid - z_dim // 2, z_mid + z_dim // 2
+            # BUG FIX: z_start was allowed to go negative (e.g. z_mid=10, z_dim=48 → z_start=-14).
+            # Python list slicing with a negative start wraps around and loads slices from the
+            # WRONG end of the sorted TIF list — a completely silent data corruption bug.
+            # Clamping to 0 ensures we always read from the beginning of the stack.
+            z_start = max(z_mid - z_dim // 2, 0)
+            z_end = z_start + z_dim
 
             # we don't convert to torch since it doesn't support uint16
             images = [
                 np.array(Image.open(fn)) for fn in surface_volume_paths[z_start:z_end]
             ]
             image_stack = np.stack(images, axis=0)
+
+            # BUG FIX: if the fragment has fewer TIF files than z_dim (e.g. 30 < 48),
+            # the image_stack has wrong z-depth. __getitem__ uses image_stack[:, ...] which
+            # passes the wrong z-shape into the subvolume, causing a broadcast exception.
+            # PyTorch's DataLoader catches that exception and substitutes None, which then
+            # triggers the "default_collate: found NoneType" error.
+            # Fix: zero-pad the z-axis so image_stack.shape[0] is always exactly z_dim.
+            if image_stack.shape[0] < z_dim:
+                pad_z = z_dim - image_stack.shape[0]
+                padding = np.zeros((pad_z, *image_stack.shape[1:]), dtype=image_stack.dtype)
+                image_stack = np.concatenate([image_stack, padding], axis=0)
+
             image_stacks.append(image_stack)
 
-            pixels = np.stack(np.where(mask == 1), axis=1).astype(np.uint16)
+            # BUG FIX: was np.uint16 — uint16 can't represent negative numbers,
+            # which corrupts subtraction in __getitem__ padding logic AND in
+            # filter_edge_pixels comparisons when coordinates are near 0.
+            # int32 gives full signed arithmetic with no performance penalty.
+            pixels = np.stack(np.where(mask == 1), axis=1).astype(np.int32)
             if filter_edge_pixels:
                 height, width = mask.shape
                 mask_y = np.logical_or(
@@ -99,7 +120,10 @@ class SubvolumeDataset(thd.Dataset):
         return len(self.pixels)
 
     def __getitem__(self, index):
+        # Pixels are now stored as int32 (see __init__), so signed arithmetic
+        # in the padding logic is always correct.
         center_y, center_x, fragment_id = self.pixels[index]
+        center_y, center_x, fragment_id = int(center_y), int(center_x), int(fragment_id)
         z_dim, y_dim, x_dim = self.voxel_shape
         image_stack = self.image_stacks[fragment_id]
         _, height, width = image_stack.shape
@@ -278,7 +302,14 @@ class AI:
         else:
             self.train_run = True
         
-        self.DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # BUG FIX: original code only checked for CUDA, falling back straight to CPU.
+        # On Apple Silicon Macs, MPS is available and significantly faster than CPU.
+        if torch.cuda.is_available():
+            self.DEVICE = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.DEVICE = torch.device("mps")
+        else:
+            self.DEVICE = torch.device("cpu")
         self.model = InkDetector().to(self.DEVICE)
         
         self.base_path = ""
@@ -351,7 +382,10 @@ class AI:
             gc.collect()
         else:
             print("Loading model configurations into memory...")
-            model_weights = torch.load(os.path.join(self.base_path, "data/model.pt"))
+            # BUG FIX: torch.load without map_location will try to load weights to the
+            # same device they were saved from. If you trained on CUDA but are now running
+            # on MPS or CPU (or vice versa), this throws a RuntimeError.
+            model_weights = torch.load(os.path.join(self.base_path, "data/model.pt"), map_location=self.DEVICE)
             self.model.load_state_dict(model_weights)
 
         print("Model successfully loaded.")
@@ -359,7 +393,10 @@ class AI:
     def eval_model(self, threshold: float):
         # Test:
         test_path = Path(os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/test"))  # BUG FIX: wrap in Path() so the / operator works below
-        test_fragments = [test_path / fragment_name for fragment_name in test_path.iterdir()]          # BUG FIX: was test_path (str) / fragment_name — str doesn't support / operator, causing TypeError
+        # BUG FIX: test_path / fragment iterdir() yields full absolute Paths, so
+        # test_path / absolute_path silently discards test_path (Python Path semantics:
+        # an absolute right-operand always wins). Using iterdir() directly is correct.
+        test_fragments = [f for f in test_path.iterdir() if f.is_dir()]
         print("All fragments to run: ", test_fragments)
         pred_images = []
         self.model.eval()
@@ -403,10 +440,14 @@ class AI:
             plt.margins(0, 0)
             
             file_name = f"image_{threshold}_{i}.png"
-            if not os.path.isdir("outputs"):
-                os.mkdir(config.get("base_path") + "/outputs")
+            output_dir = os.path.join(config.get("base_path"), "outputs")
+            # BUG FIX: was checking os.path.isdir("outputs") (relative) but creating at
+            # base_path/outputs (absolute). On some working directories these differ,
+            # causing the directory to be created in the wrong place every run.
+            if not os.path.isdir(output_dir):
+                os.mkdir(output_dir)
             
-            plt.savefig(os.path.join(config.get("base_path") + "/outputs/", file_name), format='png', bbox_inches='tight', pad_inches=0)
+            plt.savefig(os.path.join(output_dir, file_name), format='png', bbox_inches='tight', pad_inches=0)
             print(f"Saved {file_name}")
 
 def download_data():    
