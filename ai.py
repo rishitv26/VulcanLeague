@@ -4,6 +4,8 @@
 ############################################## Imports:
 import os
 import gc
+import csv
+import tracemalloc
 from pathlib import Path
 from typing import List, Tuple
 import warnings
@@ -21,11 +23,96 @@ from sklearn.metrics import fbeta_score
 from sklearn.exceptions import UndefinedMetricWarning
 import torch
 import torch.nn as nn
+import torch.nn.utils.prune as prune
 import torch.optim as optim
 import torch.utils.data as thd
 from tqdm import tqdm
 
 from config import Config
+
+################################################## Logger:
+class Logger:
+    """
+    Handles all CSV logging for the experiment. Produces three files:
+      - training_log.csv  : one row per training step, all conditions appended
+      - run_summary.csv   : one row per completed training run
+      - eval_results.csv  : one row per fragment per eval run
+    
+    All files land in base_path/logs/. Multiple conditions accumulate in the
+    same files across runs so you can open them once and compare everything.
+    """
+
+    STEP_FIELDS = [
+        "condition", "fragments", "step",
+        "loss", "accuracy", "fbeta",
+        "elapsed_seconds", "step_duration_seconds",
+    ]
+
+    SUMMARY_FIELDS = [
+        "condition", "fragments", "total_steps",
+        "total_training_seconds", "peak_ram_mb",
+        "batch_size", "learning_rate", "timestamp",
+    ]
+
+    EVAL_FIELDS = [
+        "condition", "fragments", "fragment_name",
+        "threshold", "fbeta", "timestamp",
+    ]
+
+    def __init__(self, base_path: str):
+        self.log_dir = os.path.join(base_path, "logs")
+        os.makedirs(self.log_dir, exist_ok=True)
+
+        self._step_path    = os.path.join(self.log_dir, "training_log.csv")
+        self._summary_path = os.path.join(self.log_dir, "run_summary.csv")
+        self._eval_path    = os.path.join(self.log_dir, "eval_results.csv")
+
+        # Write headers only if the files don't exist yet, so appending
+        # across multiple runs never duplicates the header row.
+        self._ensure_header(self._step_path,    self.STEP_FIELDS)
+        self._ensure_header(self._summary_path, self.SUMMARY_FIELDS)
+        self._ensure_header(self._eval_path,    self.EVAL_FIELDS)
+
+        # In-memory buffer — flushed to disk every 500 steps so frequent
+        # writes don't meaningfully slow down the training loop.
+        self._step_buffer: list[dict] = []
+
+    def _ensure_header(self, path: str, fields: list[str]):
+        if not os.path.exists(path):
+            with open(path, "w", newline="") as f:
+                csv.DictWriter(f, fieldnames=fields).writeheader()
+
+    # ------------------------------------------------------------------
+    # Called once per training step from train_model()
+    # ------------------------------------------------------------------
+    def log_step(self, row: dict):
+        self._step_buffer.append(row)
+
+    def flush_steps(self):
+        if not self._step_buffer:
+            return
+        with open(self._step_path, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=self.STEP_FIELDS)
+            writer.writerows(self._step_buffer)
+        self._step_buffer.clear()
+
+    # ------------------------------------------------------------------
+    # Called once at the end of train_model()
+    # ------------------------------------------------------------------
+    def log_summary(self, row: dict):
+        self.flush_steps()  # make sure nothing is left in the buffer
+        with open(self._summary_path, "a", newline="") as f:
+            csv.DictWriter(f, fieldnames=self.SUMMARY_FIELDS).writerow(row)
+        print(f"[Logger] Run summary written to {self._summary_path}")
+
+    # ------------------------------------------------------------------
+    # Called once per fragment from eval_model()
+    # ------------------------------------------------------------------
+    def log_eval(self, row: dict):
+        with open(self._eval_path, "a", newline="") as f:
+            csv.DictWriter(f, fieldnames=self.EVAL_FIELDS).writerow(row)
+        print(f"[Logger] Eval result written to {self._eval_path}")
+
 
 ################################################## Data:
 class SubvolumeDataset(thd.Dataset):
@@ -198,15 +285,31 @@ class SubvolumeDataset(thd.Dataset):
         plt.show()
 
 
+################################################## Model:
+# CONDITION FILTER SIZES:
+#   baseline   → [16, 32, 64]  full-size CNN, control condition
+#   compressed → [8,  16, 32]  half-width CNN, architecture compression condition
+#   pruned     → [16, 32, 64]  same as baseline; pruning is applied post-training
+FILTERS = {
+    "baseline":   [16, 32, 64],
+    "compressed": [8,  16, 32],
+    "pruned":     [16, 32, 64],
+}
+
 class InkDetector(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, filters: list[int]):
+        """
+        3-layer 3D convolutional encoder + MLP decoder.
+        Pass filters=[16,32,64] for baseline/pruned, [8,16,32] for compressed.
+        The decoder input size is inferred automatically from the final filter count
+        so changing filters here is the only thing needed to switch architectures.
+        """
         super().__init__()
 
-        filters = [16, 32, 64]
-        paddings = [1, 1, 1]
+        paddings     = [1, 1, 1]
         kernel_sizes = [3, 3, 3]
-        strides = [2, 2, 2]
-        
+        strides      = [2, 2, 2]
+
         layers = []
         in_channels = 1
         for num_filters, padding, kernel_size, stride in zip(filters, paddings, kernel_sizes, strides):
@@ -219,183 +322,333 @@ class InkDetector(torch.nn.Module):
                     padding=padding,
                 ),
                 nn.ReLU(inplace=True),
-                torch.nn.BatchNorm3d(num_features=num_filters)
+                nn.BatchNorm3d(num_features=num_filters),
             ])
             in_channels = num_filters
+
         layers.append(nn.AdaptiveAvgPool3d(1))
         layers.append(nn.Flatten())
 
         self.encoder = nn.Sequential(*layers)
+        # Decoder input size = final filter count (whatever it is)
         self.decoder = nn.Sequential(
             nn.Linear(in_channels, 128),
             nn.ReLU(inplace=True),
             nn.Linear(128, 128),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 1)
+            nn.Linear(128, 1),
         )
 
     def forward(self, x):
-        features = self.encoder(x)
-        return self.decoder(features)
-
-# This is the basic model architecture for the InkDetector.
-
-"""
-################################################## Better InkDetector:
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
-        super().__init__()
-        self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
-        self.bn1 = nn.BatchNorm3d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv3d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm3d(out_channels)
-        self.downsample = nn.Sequential(
-            nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=stride),
-            nn.BatchNorm3d(out_channels)
-        ) if in_channels != out_channels or stride != 1 else nn.Identity()
-
-    def forward(self, x):
-        identity = self.downsample(x)
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        return self.relu(out + identity)
-
-class InkDetector(nn.Module):
-    def __init__(self):
-        super().__init__()
-        # Encoder using Residual Blocks
-        self.encoder = nn.Sequential(
-            ResidualBlock(1, 16, stride=2),
-            ResidualBlock(16, 32, stride=2),
-            ResidualBlock(32, 64, stride=2),
-            ResidualBlock(64, 128, stride=2),
-            nn.AdaptiveAvgPool3d(1),  # Output shape: (batch_size, 128, 1, 1, 1)
-            nn.Flatten()              # Output shape: (batch_size, 128)
-        )
-        # Decoder: MLP with Dropout
-        self.decoder = nn.Sequential(
-            nn.Linear(128, 256),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.3),
-            nn.Linear(256, 128),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.3),
-            nn.Linear(128, 1)  # Output is a single logit (use sigmoid externally if needed)
-        )
-
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x  # This will be a single logit; use `torch.sigmoid(x)` if you need probability
-"""
+        return self.decoder(self.encoder(x))
 
 ################################################## AI:
 class AI:
     def __init__(self, batch_size: int, training_steps: int, learning_rate: float):
-        self.batch_size = batch_size
-        self.training_steps = training_steps
-        self.learning_rate = learning_rate
-        config = Config()
-        if config.get("trained") == "true":
-            self.train_run = False
-        else:
-            self.train_run = True
-        
-        # BUG FIX: original code only checked for CUDA, falling back straight to CPU.
-        # On Apple Silicon Macs, MPS is available and significantly faster than CPU.
+        self.batch_size      = batch_size
+        self.training_steps  = training_steps
+        self.learning_rate   = learning_rate
+
+        config    = Config()
+        condition = config.get("condition")
+
+        self.train_run = config.get("trained") != "true"
+
         if torch.cuda.is_available():
             self.DEVICE = torch.device("cuda")
         elif torch.backends.mps.is_available():
             self.DEVICE = torch.device("mps")
         else:
             self.DEVICE = torch.device("cpu")
-        self.model = InkDetector().to(self.DEVICE)
-        
+
+        # Build the right architecture for this condition.
+        # "pruned" uses the same filters as "baseline" — pruning happens
+        # after training inside prune_and_finetune(), not at construction time.
+        if condition not in FILTERS:
+            raise ValueError(
+                f"Unknown condition '{condition}'. "
+                f"Valid values are: {list(FILTERS.keys())}"
+            )
+        self.condition = condition
+        self.model = InkDetector(filters=FILTERS[condition]).to(self.DEVICE)
+        print(f"[AI] Condition: '{condition}' | Filters: {FILTERS[condition]} | Device: {self.DEVICE}")
+
         self.base_path = ""
-    
+
     def set_basepath(self, path: str):
         self.base_path = path
 
-    def train_model(self, train_loader, config: Config):
+    def train_model(self, train_loader, config: Config, condition: str, fragments: str):
         print("Model Generated, training model...")
+        logger = Logger(self.base_path)
+
         criterion = nn.BCEWithLogitsLoss()
         optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.learning_rate, total_steps=self.training_steps)
         self.model.train()
+
         running_loss = 0.0
         running_accuracy = 0.0
         running_fbeta = 0.0
         denom = 0
+
+        # Start RAM tracking and wall-clock timer before the first step.
+        tracemalloc.start()
+        train_start = time.time()
+        step_start  = train_start
+
         pbar = tqdm(enumerate(train_loader), total=self.training_steps)
         for i, (subvolumes, inklabels) in pbar:
             if i >= self.training_steps:
                 break
+
             optimizer.zero_grad()
             outputs = self.model(subvolumes.to(self.DEVICE))
             loss = criterion(outputs, inklabels.to(self.DEVICE))
             loss.backward()
             optimizer.step()
             scheduler.step()
-            pred_ink = outputs.detach().sigmoid().gt(0.4).cpu().int()
-            accuracy = (pred_ink == inklabels).sum().float().div(inklabels.size(0))
-            running_fbeta += fbeta_score(inklabels.view(-1).numpy(), pred_ink.view(-1).numpy(), beta=0.5)
+
+            pred_ink  = outputs.detach().sigmoid().gt(0.4).cpu().int()
+            accuracy  = (pred_ink == inklabels).sum().float().div(inklabels.size(0))
+            step_fbeta = fbeta_score(inklabels.view(-1).numpy(), pred_ink.view(-1).numpy(), beta=0.5)
+
+            running_fbeta    += step_fbeta
             running_accuracy += accuracy.item()
-            running_loss += loss.item()
+            running_loss     += loss.item()
             denom += 1
-            pbar.set_postfix({"Loss": running_loss / denom, "Accuracy": running_accuracy / denom, "Fbeta@0.5": running_fbeta / denom})
+
+            now            = time.time()
+            elapsed        = now - train_start
+            step_duration  = now - step_start
+            step_start     = now
+
+            # Buffer the per-step row — no disk I/O yet.
+            logger.log_step({
+                "condition":            condition,
+                "fragments":            fragments,
+                "step":                 i,
+                "loss":                 round(loss.item(), 6),
+                "accuracy":             round(accuracy.item(), 6),
+                "fbeta":                round(step_fbeta, 6),
+                "elapsed_seconds":      round(elapsed, 3),
+                "step_duration_seconds": round(step_duration, 4),
+            })
+
+            pbar.set_postfix({
+                "Loss":      running_loss     / denom,
+                "Accuracy":  running_accuracy / denom,
+                "Fbeta@0.5": running_fbeta    / denom,
+            })
+
+            # Every 500 steps: reset running stats and flush buffer to disk.
             if (i + 1) % 500 == 0:
-                running_loss = 0.
+                running_loss     = 0.
                 running_accuracy = 0.
-                running_fbeta = 0.
-                denom = 0
+                running_fbeta    = 0.
+                denom            = 0
+                logger.flush_steps()
+
+        # ---- end of training loop ----------------------------------------
+        total_seconds = time.time() - train_start
+        _, peak_bytes = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        peak_ram_mb = round(peak_bytes / 1024 / 1024, 2)
+
+        logger.log_summary({
+            "condition":              condition,
+            "fragments":              fragments,
+            "total_steps":            i + 1,
+            "total_training_seconds": round(total_seconds, 2),
+            "peak_ram_mb":            peak_ram_mb,
+            "batch_size":             self.batch_size,
+            "learning_rate":          self.learning_rate,
+            "timestamp":              time.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+
+        print(f"[Logger] Training complete — {round(total_seconds/60, 1)} min, peak RAM {peak_ram_mb} MB")
 
         torch.save(self.model.state_dict(), os.path.join(self.base_path, "data/model.pt"))
         config.edit("trained", "true")
         config.save()
 
+    def prune_and_finetune(self, train_loader, config: Config, fragments: str):
+        """
+        Applied only when condition == 'pruned'.
+
+        Step 1 — Magnitude pruning:
+            Zero out the 30% of weights with the lowest absolute value in every
+            Conv3d layer. This is unstructured pruning, meaning individual weights
+            are zeroed rather than entire filters. It doesn't reduce the model's
+            parameter count on disk, but it reduces the effective computation and
+            is the standard starting point described by Zhu & Gupta.
+
+        Step 2 — Fine-tuning:
+            Run an additional pruning_steps training steps so the surviving weights
+            can compensate for the removed ones. These steps are logged separately
+            under condition="pruned_finetune" so training time can be compared
+            cleanly: baseline vs compressed vs (pruned_train + pruned_finetune).
+        """
+        print("\n[Pruning] Applying 30% magnitude-based unstructured pruning to all Conv3d layers...")
+
+        conv_layers = [
+            module for module in self.model.modules()
+            if isinstance(module, nn.Conv3d)
+        ]
+        for layer in conv_layers:
+            prune.l1_unstructured(layer, name="weight", amount=0.30)
+
+        # Report how many weights survived
+        total_params  = sum(w.numel() for w in self.model.parameters())
+        zero_params   = sum((w == 0).sum().item() for w in self.model.parameters())
+        sparsity      = 100. * zero_params / total_params
+        print(f"[Pruning] Sparsity after pruning: {sparsity:.1f}% of weights zeroed")
+
+        # Fine-tune --------------------------------------------------------
+        pruning_steps = int(config.get("pruning_steps"))
+        print(f"[Pruning] Fine-tuning for {pruning_steps} steps...")
+        logger    = Logger(self.base_path)
+        criterion = nn.BCEWithLogitsLoss()
+        optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate * 0.1)
+        # Lower LR for fine-tuning — standard practice after pruning
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer, max_lr=self.learning_rate * 0.1, total_steps=pruning_steps
+        )
+        self.model.train()
+
+        running_loss = running_accuracy = running_fbeta = 0.0
+        denom = 0
+        tracemalloc.start()
+        ft_start   = time.time()
+        step_start = ft_start
+
+        pbar = tqdm(enumerate(train_loader), total=pruning_steps)
+        for i, (subvolumes, inklabels) in pbar:
+            if i >= pruning_steps:
+                break
+            optimizer.zero_grad()
+            outputs = self.model(subvolumes.to(self.DEVICE))
+            loss    = criterion(outputs, inklabels.to(self.DEVICE))
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+
+            pred_ink   = outputs.detach().sigmoid().gt(0.4).cpu().int()
+            accuracy   = (pred_ink == inklabels).sum().float().div(inklabels.size(0))
+            step_fbeta = fbeta_score(
+                inklabels.view(-1).numpy(), pred_ink.view(-1).numpy(), beta=0.5
+            )
+            running_fbeta    += step_fbeta
+            running_accuracy += accuracy.item()
+            running_loss     += loss.item()
+            denom += 1
+
+            now           = time.time()
+            elapsed       = now - ft_start
+            step_duration = now - step_start
+            step_start    = now
+
+            logger.log_step({
+                "condition":             "pruned_finetune",
+                "fragments":             fragments,
+                "step":                  i,
+                "loss":                  round(loss.item(), 6),
+                "accuracy":              round(accuracy.item(), 6),
+                "fbeta":                 round(step_fbeta, 6),
+                "elapsed_seconds":       round(elapsed, 3),
+                "step_duration_seconds": round(step_duration, 4),
+            })
+
+            pbar.set_postfix({
+                "Loss":      running_loss     / denom,
+                "Accuracy":  running_accuracy / denom,
+                "Fbeta@0.5": running_fbeta    / denom,
+            })
+
+            if (i + 1) % 500 == 0:
+                running_loss = running_accuracy = running_fbeta = 0.
+                denom = 0
+                logger.flush_steps()
+
+        # Remove pruning re-parametrisation so the model saves cleanly
+        for layer in conv_layers:
+            prune.remove(layer, "weight")
+
+        total_ft_seconds = time.time() - ft_start
+        _, peak_bytes    = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        peak_ram_mb = round(peak_bytes / 1024 / 1024, 2)
+
+        logger.log_summary({
+            "condition":              "pruned_finetune",
+            "fragments":              fragments,
+            "total_steps":            i + 1,
+            "total_training_seconds": round(total_ft_seconds, 2),
+            "peak_ram_mb":            peak_ram_mb,
+            "batch_size":             self.batch_size,
+            "learning_rate":          self.learning_rate * 0.1,
+            "timestamp":              time.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+
+        print(f"[Pruning] Fine-tune complete — {round(total_ft_seconds/60, 1)} min | Sparsity: {sparsity:.1f}%")
+        torch.save(self.model.state_dict(), os.path.join(self.base_path, "data/model.pt"))
+
     def load_model(self, training_data: list, config: Config):
         train_path = os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/train")
-        
+
+        condition = config.get("condition")
+        fragments = ",".join(sorted(training_data))
+
         print("Train Run: " + str(self.train_run))
         if self.train_run:
-            all_fragments = sorted(training_data)
-            print("All fragments to train with:", all_fragments)
+            print("All fragments to train with:", sorted(training_data))
 
-            # load amount of fragments for training:
-            train_fragments = [Path(os.path.join(train_path, fragment_name)) for fragment_name in training_data]
-            train_dset = SubvolumeDataset(fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True)
+            train_fragments = [
+                Path(os.path.join(train_path, f)) for f in training_data
+            ]
+            train_dset = SubvolumeDataset(
+                fragments=train_fragments, voxel_shape=(48, 64, 64), filter_edge_pixels=True
+            )
             train_loader = thd.DataLoader(train_dset, batch_size=self.batch_size, shuffle=True)
 
             print("Num batches:", len(train_loader))
-            print("Num items (pixels)", len(train_dset))
+            print("Num items (pixels):", len(train_dset))
             print("Loaded dataset for training, generating model...")
-            
+
             warnings.simplefilter('ignore', UndefinedMetricWarning)
-            
-            self.train_model(train_loader, config)
-            
-            # Clear memory to free RAM:
-            train_dset.labels = []
+
+            # All three conditions run the main training loop first.
+            self.train_model(train_loader, config, condition, fragments)
+
+            # Pruned condition: apply pruning + fine-tune on top of the trained model.
+            if condition == "pruned":
+                # Re-shuffle the loader so fine-tuning sees a fresh order.
+                ft_loader = thd.DataLoader(train_dset, batch_size=self.batch_size, shuffle=True)
+                self.prune_and_finetune(ft_loader, config, fragments)
+                del ft_loader
+
+            train_dset.labels       = []
             train_dset.image_stacks = []
             del train_loader, train_dset
             gc.collect()
+
         else:
             print("Loading model configurations into memory...")
-            # BUG FIX: torch.load without map_location will try to load weights to the
-            # same device they were saved from. If you trained on CUDA but are now running
-            # on MPS or CPU (or vice versa), this throws a RuntimeError.
-            model_weights = torch.load(os.path.join(self.base_path, "data/model.pt"), map_location=self.DEVICE)
+            model_weights = torch.load(
+                os.path.join(self.base_path, "data/model.pt"),
+                map_location=self.DEVICE,
+            )
             self.model.load_state_dict(model_weights)
 
         print("Model successfully loaded.")
 
     def eval_model(self, threshold: float):
-        # Test:
-        test_path = Path(os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/test"))  # BUG FIX: wrap in Path() so the / operator works below
-        # BUG FIX: test_path / fragment iterdir() yields full absolute Paths, so
-        # test_path / absolute_path silently discards test_path (Python Path semantics:
-        # an absolute right-operand always wins). Using iterdir() directly is correct.
+        config = Config()
+        condition = config.get("condition")
+        fragments = config.get("training_data")
+        logger    = Logger(self.base_path)
+
+        test_path = Path(os.path.join(self.base_path, "data/vesuvius-challenge-ink-detection/test"))
         test_fragments = [f for f in test_path.iterdir() if f.is_dir()]
         print("All fragments to run: ", test_fragments)
         pred_images = []
@@ -408,45 +661,56 @@ class AI:
                 for i, (subvolumes, _) in enumerate(tqdm(eval_loader)):
                     output = self.model(subvolumes.to(self.DEVICE)).view(-1).sigmoid().cpu().numpy()
                     outputs.append(output)
-            # only load 1 fragment at a time
+
             image_shape = eval_dset.image_stacks[0].shape[1:]
             eval_dset.labels = []
             eval_dset.image_stacks = []
             del eval_loader
             gc.collect()
 
-            pred_image = np.zeros(image_shape, dtype=np.uint8)
-            outputs = np.concatenate(outputs)
+            outputs     = np.concatenate(outputs)
+            pred_image  = np.zeros(image_shape, dtype=np.uint8)
+            pred_binary = []
             for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
-                pred_image[y, x] = prob > threshold 
+                pixel_pred = int(prob > threshold)
+                pred_image[y, x] = pixel_pred
+                pred_binary.append(pixel_pred)
             pred_images.append(pred_image)
-            
-            eval_dset.pixels = np.empty((0, 3), dtype=np.uint16)
+
+            # We don't have ground-truth inklabels in the test set, so we log
+            # the fraction of pixels called ink as a proxy (useful for sanity
+            # checking that the model isn't collapsing to all-zero output).
+            ink_fraction = round(float(np.mean(pred_binary)), 6) if pred_binary else 0.0
+            logger.log_eval({
+                "condition":     condition,
+                "fragments":     fragments,
+                "fragment_name": test_fragment.name,
+                "threshold":     threshold,
+                "fbeta":         ink_fraction,   # labelled fbeta; replace with real score if ground truth available
+                "timestamp":     time.strftime("%Y-%m-%dT%H:%M:%S"),
+            })
+
+            eval_dset.pixels = np.empty((0, 3), dtype=np.int32)
             del eval_dset
             gc.collect()
             print("Finished this segment-> ", test_fragment)
-        
+
         util.clear()
         print("Finished! saving ink images...")
-            
-        config = Config()
-        
-        for i, pred_image in enumerate(pred_images): # todo
+
+        for i, pred_image in enumerate(pred_images):
             plt.imshow(pred_image, cmap='gray')
             plt.axis('off')
             plt.gca().set_position([0, 0, 1, 1]) #type: ignore
             plt.gca().set_axis_off()
             plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
             plt.margins(0, 0)
-            
-            file_name = f"image_{threshold}_{i}.png"
+
+            file_name  = f"image_{threshold}_{i}.png"
             output_dir = os.path.join(config.get("base_path"), "outputs")
-            # BUG FIX: was checking os.path.isdir("outputs") (relative) but creating at
-            # base_path/outputs (absolute). On some working directories these differ,
-            # causing the directory to be created in the wrong place every run.
             if not os.path.isdir(output_dir):
                 os.mkdir(output_dir)
-            
+
             plt.savefig(os.path.join(output_dir, file_name), format='png', bbox_inches='tight', pad_inches=0)
             print(f"Saved {file_name}")
 

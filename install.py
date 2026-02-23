@@ -14,6 +14,8 @@ def setup_configs():
         config.add("learning_rate", "1e-3")
         config.add("training_data", "1")
         config.add("threshold", "0.4")
+        config.add("condition", "baseline")   # set to "compressed" or "pruned" before each experimental run
+        config.add("pruning_steps", "10000")  # fine-tune steps applied after pruning (pruned condition only)
         config.save()
     except ValueError:
         print("Using existing settings...")
@@ -24,7 +26,6 @@ def main():
     print("Starting initial setup... Press enter to continue.")
     util.pause()
     util.clear()
-    ################# import dependencies:
 
     import os
     if not util.is_windows():
