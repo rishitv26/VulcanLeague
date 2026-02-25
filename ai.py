@@ -51,12 +51,16 @@ class Logger:
     SUMMARY_FIELDS = [
         "condition", "fragments", "total_steps",
         "total_training_seconds", "peak_ram_mb",
-        "batch_size", "learning_rate", "timestamp",
+        "batch_size", "learning_rate",
+        "flops_per_forward", "total_training_flops",
+        "timestamp",
     ]
 
     EVAL_FIELDS = [
         "condition", "fragments", "fragment_name",
-        "threshold", "fbeta", "timestamp",
+        "threshold", "fbeta",
+        "flops_per_pixel", "total_eval_flops",
+        "timestamp",
     ]
 
     def __init__(self, base_path: str):
@@ -112,6 +116,71 @@ class Logger:
         with open(self._eval_path, "a", newline="") as f:
             csv.DictWriter(f, fieldnames=self.EVAL_FIELDS).writerow(row)
         print(f"[Logger] Eval result written to {self._eval_path}")
+
+
+################################################## FLOPs counter:
+def _compute_flops(model: torch.nn.Module, input_shape: tuple) -> int:
+    """
+    Count FLOPs for a single forward pass through the model without any
+    external libraries, by registering temporary hooks on Conv3d and Linear layers.
+
+    FLOPs = 2 × MACs (each multiply-accumulate counts as 2 operations).
+
+    Conv3d FLOPs per output element:
+        2 × C_in × kD × kH × kW   (one dot product per output spatial position)
+    Linear FLOPs per output element:
+        2 × in_features
+
+    BatchNorm and activation layers are omitted — their FLOPs are negligible
+    (a few additions/multiplications per element) compared to conv/linear layers.
+
+    Args:
+        model:       The nn.Module to profile. Must be on CPU for the dummy pass.
+        input_shape: Full input tensor shape including batch dim, e.g. (1, 1, 48, 64, 64).
+
+    Returns:
+        Total FLOPs as an integer.
+    """
+    flops_count = [0]
+    hooks = []
+
+    def conv3d_hook(module, inp, output):
+        # inp[0]:  (batch, C_in,  D,     H,     W    )
+        # output:  (batch, C_out, D_out, H_out, W_out)
+        batch = inp[0].shape[0]
+        C_in  = inp[0].shape[1]
+        C_out, D_out, H_out, W_out = (output.shape[1], output.shape[2],
+                                       output.shape[3], output.shape[4])
+        kD, kH, kW = (module.kernel_size if isinstance(module.kernel_size, tuple)
+                      else (module.kernel_size,) * 3)
+        # MACs = batch × C_out × D_out × H_out × W_out × (C_in/groups) × kD × kH × kW
+        macs = batch * C_out * D_out * H_out * W_out * (C_in // module.groups) * kD * kH * kW
+        flops_count[0] += 2 * macs
+
+    def linear_hook(module, inp, output):
+        batch = inp[0].shape[0]
+        macs  = batch * module.in_features * module.out_features
+        flops_count[0] += 2 * macs
+
+    # Register hooks on every Conv3d and Linear in the model
+    for module in model.modules():
+        if isinstance(module, nn.Conv3d):
+            hooks.append(module.register_forward_hook(conv3d_hook))
+        elif isinstance(module, nn.Linear):
+            hooks.append(module.register_forward_hook(linear_hook))
+
+    # Run one dummy forward pass on CPU (device-agnostic, no gradients needed)
+    dummy = torch.zeros(input_shape)
+    cpu_model = model.cpu()
+    with torch.no_grad():
+        cpu_model(dummy)
+    # Restore model to its original device
+    model.to(next(model.parameters()).device if len(list(model.parameters())) > 0 else "cpu")
+
+    for h in hooks:
+        h.remove()
+
+    return flops_count[0]
 
 
 ################################################## Data:
@@ -373,6 +442,13 @@ class AI:
         self.model = InkDetector(filters=FILTERS[condition]).to(self.DEVICE)
         print(f"[AI] Condition: '{condition}' | Filters: {FILTERS[condition]} | Device: {self.DEVICE}")
 
+        # Compute FLOPs for one forward pass once at construction time.
+        # Subvolume shape is (1, 1, 48, 64, 64): batch=1, channel=1, z/y/x dims.
+        # This is constant for the lifetime of this AI instance, so we only
+        # run the dummy pass once here rather than repeatedly during training.
+        self.flops_per_forward = _compute_flops(self.model, (1, 1, 48, 64, 64))
+        print(f"[AI] FLOPs per forward pass: {self.flops_per_forward:,}")
+
         self.base_path = ""
 
     def set_basepath(self, path: str):
@@ -463,6 +539,10 @@ class AI:
             "peak_ram_mb":            peak_ram_mb,
             "batch_size":             self.batch_size,
             "learning_rate":          self.learning_rate,
+            # FLOPs per step = 3× forward pass (1× forward + 2× backward).
+            # Total training FLOPs = flops_per_step × steps completed.
+            "flops_per_forward":      self.flops_per_forward,
+            "total_training_flops":   self.flops_per_forward * 3 * (i + 1),
             "timestamp":              time.strftime("%Y-%m-%dT%H:%M:%S"),
         })
 
@@ -587,6 +667,8 @@ class AI:
             "peak_ram_mb":            peak_ram_mb,
             "batch_size":             self.batch_size,
             "learning_rate":          self.learning_rate * 0.1,
+            "flops_per_forward":      self.flops_per_forward,
+            "total_training_flops":   self.flops_per_forward * 3 * (i + 1),
             "timestamp":              time.strftime("%Y-%m-%dT%H:%M:%S"),
         })
 
@@ -671,23 +753,25 @@ class AI:
             outputs     = np.concatenate(outputs)
             pred_image  = np.zeros(image_shape, dtype=np.uint8)
             pred_binary = []
+            pixels_evaluated = 0
             for (y, x, _), prob in zip(eval_dset.pixels[:outputs.shape[0]], outputs):
                 pixel_pred = int(prob > threshold)
                 pred_image[y, x] = pixel_pred
                 pred_binary.append(pixel_pred)
+                pixels_evaluated += 1
             pred_images.append(pred_image)
 
-            # We don't have ground-truth inklabels in the test set, so we log
-            # the fraction of pixels called ink as a proxy (useful for sanity
-            # checking that the model isn't collapsing to all-zero output).
             ink_fraction = round(float(np.mean(pred_binary)), 6) if pred_binary else 0.0
             logger.log_eval({
-                "condition":     condition,
-                "fragments":     fragments,
-                "fragment_name": test_fragment.name,
-                "threshold":     threshold,
-                "fbeta":         ink_fraction,   # labelled fbeta; replace with real score if ground truth available
-                "timestamp":     time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "condition":       condition,
+                "fragments":       fragments,
+                "fragment_name":   test_fragment.name,
+                "threshold":       threshold,
+                "fbeta":           ink_fraction,
+                # Eval is inference-only: 1× forward FLOPs per pixel, no backward pass.
+                "flops_per_pixel": self.flops_per_forward,
+                "total_eval_flops": self.flops_per_forward * pixels_evaluated,
+                "timestamp":       time.strftime("%Y-%m-%dT%H:%M:%S"),
             })
 
             eval_dset.pixels = np.empty((0, 3), dtype=np.int32)
