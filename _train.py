@@ -9,12 +9,15 @@ def main(cmd_list, config: Config, detector: AI):
         reply = data_not_downloaded()
         if reply:
             return None
-    print("Preparing to train this model...\n")
-    print("DO NOT let machine turn off or sleep during this process.")
-    print("Close all other programs for best performance.")
-    print("Press enter when you are ready to continue.")
-    util.pause()
-    util.clear()
+
+    if "--y" not in cmd_list:
+        print("Preparing to train this model...\n")
+        print("DO NOT let machine turn off or sleep during this process.")
+        print("Close all other programs for best performance.")
+        print("Press enter when you are ready to continue.")
+        util.pause()
+        util.clear()
+        
     try:
         detector.load_model([i for i in config.get("training_data").split(",")], config)
     except Exception as e:

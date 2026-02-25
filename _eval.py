@@ -5,12 +5,14 @@ from ai import AI
 
 
 def main(cmd_list, config: Config, detector: AI):
-    print("Preparing for ink evaluation...\n")
-    print("DO NOT let machine turn off or sleep during this process.")
-    print("Close all other programs for best performance.")
-    print("Press enter when you are ready to continue.")
-    util.pause()
-    util.clear()
+    if "--y" not in cmd_list:
+        print("Preparing for ink evaluation...\n")
+        print("DO NOT let machine turn off or sleep during this process.")
+        print("Close all other programs for best performance.")
+        print("Press enter when you are ready to continue.")
+        util.pause()
+        util.clear()
+
     try:
         config = Config()
         
