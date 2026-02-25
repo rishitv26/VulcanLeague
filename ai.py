@@ -779,7 +779,6 @@ class AI:
             gc.collect()
             print("Finished this segment-> ", test_fragment)
 
-        util.clear()
         print("Finished! saving ink images...")
 
         for i, pred_image in enumerate(pred_images):

@@ -1,2 +1,0 @@
-condition,fragments,total_steps,total_training_seconds,peak_ram_mb,batch_size,learning_rate,timestamp
-baseline,1,60001,43151.08,1025.77,32,0.001,2026-02-23T22:43:51
