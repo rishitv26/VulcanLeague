@@ -8,7 +8,7 @@ def main(cmd_list: list[str], config: Config, detector):
     else:
         try:
             if cmd_list[1] == "condition":
-                if cmd_list[2] != "baseline" or cmd_list[2] != "compressed" or cmd_list[2] != "pruned":
+                if cmd_list[2] != "baseline" and cmd_list[2] != "compressed" and cmd_list[2] != "pruned":
                     invalid_setting()
                     return None
             config.edit(cmd_list[1], cmd_list[2])
