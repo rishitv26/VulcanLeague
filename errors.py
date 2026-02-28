@@ -14,6 +14,9 @@ def segment_doesnt_exist():
 def setting_doesnt_exist():
     print("ERROR: This setting has not been defined or doesnt exist.")
 
+def invalid_setting():
+    print("ERROR: The setting could not be changed to the provided value. A typo perhaps?")
+
 def data_not_downloaded():
     print("ERROR: The data required to train the model is not yet installed.\n")
     reply = util.ask("Install them now?> ")
