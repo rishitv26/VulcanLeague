@@ -169,13 +169,19 @@ def _compute_flops(model: torch.nn.Module, input_shape: tuple) -> int:
         elif isinstance(module, nn.Linear):
             hooks.append(module.register_forward_hook(linear_hook))
 
-    # Run one dummy forward pass on CPU (device-agnostic, no gradients needed)
-    dummy = torch.zeros(input_shape)
+    # Save the device the model currently lives on BEFORE moving it to CPU,
+    # because model.cpu() is in-place — cpu_model and model are the same object.
+    # Reading the device after the move would always return CPU, so the
+    # "restoration" would silently leave the model on CPU for all future calls.
+    original_device = next(model.parameters()).device
+
+    dummy     = torch.zeros(input_shape)
     cpu_model = model.cpu()
     with torch.no_grad():
         cpu_model(dummy)
-    # Restore model to its original device
-    model.to(next(model.parameters()).device if len(list(model.parameters())) > 0 else "cpu")
+
+    # Restore model to whichever device it was on before (cuda / mps / cpu)
+    model.to(original_device)
 
     for h in hooks:
         h.remove()
@@ -779,6 +785,7 @@ class AI:
             gc.collect()
             print("Finished this segment-> ", test_fragment)
 
+        util.clear()
         print("Finished! saving ink images...")
 
         for i, pred_image in enumerate(pred_images):
