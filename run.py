@@ -2,7 +2,7 @@ from config import Config
 from itertools import groupby
 import util
 import ai as ai
-import _help, _manual, _change_setting, _get_setting, _add_segment, _rm_segment, _eval, _train
+import _help, _manual, _change_setting, _get_setting, _add_segment, _rm_segment, _eval, _train, _get_all_settings
 
 def dispatch(cmd_list, config, detector):
     """Execute a single parsed command. Returns False if the shell should exit."""
@@ -32,6 +32,8 @@ def dispatch(cmd_list, config, detector):
         _train.main(cmd_list, config, detector)
     elif cmd == "eval":
         _eval.main(cmd_list, config, detector)
+    elif cmd == "get-all-settings":
+        _get_all_settings.main(cmd_list, config, detector)
     else:
         print("ERROR: Could not recongnize command: '" + cmd + "'.")
 
