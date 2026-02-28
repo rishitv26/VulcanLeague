@@ -39,7 +39,7 @@ def dispatch(cmd_list, config, detector):
 
 
 def main():
-    print("Welcome to the VLAE (Vulcan League AI Engine) 1.0.0")
+    print("Welcome to the VLAE (Vulcan League AI Engine) 2.0.1")
     print("type 'help' to see the list of commands.")
     print("type 'manual' for a basic tutorial on what to do.")
 
