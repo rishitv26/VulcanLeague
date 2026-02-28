@@ -26,7 +26,6 @@ def main(cmd_list, config: Config, detector: AI):
         for threshold in thresholds:
             print(f"Running using {threshold*100}% threshold...")
             detector.eval_model(threshold)
-            util.clear()
 
     except Exception as e:
         print("There was an error during the evaluation proccess. Please ensure all settings are valid and correct.")
